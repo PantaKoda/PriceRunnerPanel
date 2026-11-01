@@ -33,6 +33,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private readonly DispatcherTimer _timer;
     private CancellationTokenSource? _searchCts;
     private bool _checkingAll;
+    private bool _groupsDirty;
 
     public MainViewModel(StateStore store, PriceRunnerClient client, PriceTracker tracker, ImageLoader images, ToastNotifier toasts)
     {
@@ -47,6 +48,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         {
             Pins.Add(CreatePinned(pin));
         }
+
+        Regroup();
 
         SelectedInterval = Intervals.FirstOrDefault(i => i.Minutes == _state.Settings.RefreshMinutes) ?? Intervals[3];
         IsWatchlistTab = Pins.Count > 0;
@@ -63,6 +66,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     public ObservableCollection<SearchResultViewModel> Results { get; } = [];
 
     public ObservableCollection<PinnedItemViewModel> Pins { get; } = [];
+
+    /// <summary>The watchlist as shown: pins grouped so the variants (colours) of one product share a box.</summary>
+    public ObservableCollection<PinGroupViewModel> Groups { get; } = [];
 
     public IReadOnlyList<IntervalOption> Intervals { get; } =
         [new(15), new(30), new(60), new(120), new(240), new(480), new(1440)];
@@ -124,6 +130,10 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         if (IsDue())
         {
             _ = CheckAllAsync();
+        }
+        else if (Pins.Any(p => !p.Product.GroupResolved))
+        {
+            _ = ResolveMissingGroupsAsync();
         }
     }
 
@@ -210,6 +220,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             }
 
             _state.LastRefresh = DateTimeOffset.UtcNow;
+            RegroupIfNeeded();
             await SaveAsync();
         }
         finally
@@ -223,6 +234,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     internal async Task CheckOneAsync(PinnedItemViewModel item)
     {
         await CheckCoreAsync(item);
+        RegroupIfNeeded();
         await SaveAsync();
         UpdateStatus();
     }
@@ -272,9 +284,10 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             product.LowestSeen = product.HighestSeen = live;
             product.History = [new PricePoint(DateTimeOffset.UtcNow, live)];
             item.Refresh();
-            await SaveAsync();
         }
 
+        RegroupIfNeeded();
+        await SaveAsync();
         UpdateStatus();
     }
 
@@ -385,6 +398,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         item.IsChecking = true;
         try
         {
+            await ResolveGroupAsync(item.Product);
             var check = await _tracker.CheckAsync(item.Product, CancellationToken.None);
             item.Refresh();
             if (notify && check is not null)
@@ -449,6 +463,72 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     {
         OnPropertyChanged(nameof(WatchlistTabLabel));
         OnPropertyChanged(nameof(HasPins));
+        Regroup();
+    }
+
+    /// <summary>Looks up which variant group a pin belongs to, once. A failure is retried with the next check.</summary>
+    private async Task ResolveGroupAsync(PinnedProduct pin)
+    {
+        if (pin.GroupResolved)
+        {
+            return;
+        }
+
+        try
+        {
+            var group = await _client.GetProductGroupAsync(pin.Id, pin.Url, CancellationToken.None);
+            pin.GroupKey = group?.Key;
+            pin.GroupName = group?.Name;
+            pin.Variant = group is not null && group.Variants.TryGetValue(pin.Id, out var variant) ? variant : null;
+            pin.GroupResolved = true;
+            _groupsDirty = true;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or PriceRunnerException or TaskCanceledException or System.Text.Json.JsonException or InvalidOperationException)
+        {
+            // Unexpected data shape or network trouble: no grouping for now, the next check tries again.
+        }
+    }
+
+    /// <summary>Pins from before grouping existed: look their groups up without waiting for the next price check.</summary>
+    private async Task ResolveMissingGroupsAsync()
+    {
+        foreach (var item in Pins.Where(p => !p.Product.GroupResolved).ToList())
+        {
+            await ResolveGroupAsync(item.Product);
+        }
+
+        RegroupIfNeeded();
+        await SaveAsync();
+    }
+
+    private void RegroupIfNeeded()
+    {
+        if (_groupsDirty)
+        {
+            Regroup();
+        }
+    }
+
+    private void Regroup()
+    {
+        _groupsDirty = false;
+        foreach (var group in Groups)
+        {
+            group.Detach();
+        }
+
+        var items = Pins.ToDictionary(p => p.Product);
+        Groups.Clear();
+        foreach (var cluster in ProductGrouping.Cluster([.. Pins.Select(p => p.Product)]))
+        {
+            var members = cluster.Members.Select(m => items[m.Pin]).ToList();
+            foreach (var (member, (pin, variant)) in members.Zip(cluster.Members))
+            {
+                member.VariantLabel = members.Count > 1 ? variant ?? pin.Name : null;
+            }
+
+            Groups.Add(new PinGroupViewModel(cluster.Title, members));
+        }
     }
 
     private bool IsDue() =>

@@ -18,6 +18,10 @@ or build a single exe with `pwsh scripts/publish.ps1` (output in `artifacts/publ
 - **Watchlist** — every pinned product shows its current lowest price, the change since you pinned it, its price
   history, and a meter of where today's price sits between the lowest and highest seen. The card glows green at
   the lowest price seen.
+- **Variants are grouped** — pin several colours of one product and they share a box headed by the product's
+  name and its cheapest colour; each card shows its colour. Grouping uses PriceRunner's own variant groups, and a
+  single store's listing (e.g. "Sony WH-1000XM6 … Sand Pink") joins the box when its name starts with the
+  product's name in the same category.
 - **Target price** — type an amount (Enter or leave the field) to be alerted when the price is at or below it.
 - **Check every** 15 min – 24 h, or **Check now** (F5). Products are checked one after another with a short pause.
 - **Notifications** for a drop of at least 1 %, a new lowest price, or a reached target. Clicking one opens the

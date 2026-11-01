@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Net;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using PriceRunnerPanel.Models;
 
 namespace PriceRunnerPanel.Services;
@@ -146,6 +147,52 @@ public sealed class PriceRunnerClient : IDisposable
         }
 
         return new PriceSnapshot(lowestInStock, lowestOverall, currency, count, merchant, offerUrl);
+    }
+
+    /// <summary>
+    /// The product's variant group (e.g. its colours), or null when PriceRunner lists it on its own. Products that
+    /// a single store lists under its own name usually have no group.
+    /// </summary>
+    public async Task<ProductGroup?> GetProductGroupAsync(string productId, string productUrl, CancellationToken cancellationToken)
+    {
+        // Product URLs look like /pl/94-3410100348/...; 94 is the category the endpoint expects before the id.
+        var match = Regex.Match(productUrl, @"/pl/(\d+)-");
+        var category = match.Success ? match.Groups[1].Value : "1";
+        var url = $"/se/api/product-detail-edge-rest/public/product-detail/v0/initial/{Market}/{category}/{Uri.EscapeDataString(productId)}?languageCode=sv";
+        using var document = await GetJsonAsync(url, cancellationToken).ConfigureAwait(false);
+        // "productGroup" is null for products without variants.
+        var group = Obj(document.RootElement, "productGroup");
+        if (group.ValueKind != JsonValueKind.Object
+            || !group.TryGetProperty("members", out var members) || members.ValueKind != JsonValueKind.Array || members.GetArrayLength() < 2)
+        {
+            return null;
+        }
+
+        var variants = new Dictionary<string, string>();
+        var bases = new List<string>();
+        foreach (var member in members.EnumerateArray())
+        {
+            if (Str(member, "id") is not { } id || Str(member, "name") is not { } name)
+            {
+                continue;
+            }
+
+            var label = member.TryGetProperty("attributeValues", out var values) && values.ValueKind == JsonValueKind.Array
+                ? string.Join(" / ", values.EnumerateArray().Where(v => v.ValueKind == JsonValueKind.String).Select(v => v.GetString()))
+                : "";
+            variants[id] = label.Length > 0 ? label : name;
+            bases.Add(label.Length > 0 ? ProductGrouping.Trim(name.Replace(label, "", StringComparison.OrdinalIgnoreCase)) : name);
+        }
+
+        if (variants.Count < 2)
+        {
+            return null;
+        }
+
+        // Every member without its variant label should leave the same base name; otherwise use their common words.
+        var baseName = bases.Distinct(StringComparer.OrdinalIgnoreCase).Count() == 1 ? bases[0] : ProductGrouping.CommonPrefix(bases);
+        var key = "pg:" + variants.Keys.OrderBy(k => k.Length).ThenBy(k => k, StringComparer.Ordinal).First();
+        return new ProductGroup(key, baseName.Length > 0 ? baseName : bases[0], variants);
     }
 
     public void Dispose() => _http.Dispose();

@@ -54,6 +54,7 @@
       <StreamGeometry x:Key="IconStore">M20 4H4v2h16V4zm1 10v-2l-1-5H4l-1 5v2h1v6h10v-6h4v6h2v-6h1zm-9 4H6v-4h6v4z</StreamGeometry>
       <StreamGeometry x:Key="IconTarget">M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8zm0-14a6 6 0 1 0 6 6 6 6 0 0 0-6-6zm0 10a4 4 0 1 1 4-4 4 4 0 0 1-4 4zm0-6a2 2 0 1 0 2 2 2 2 0 0 0-2-2z</StreamGeometry>
       <StreamGeometry x:Key="IconGrip">M22 22h-2v-2h2v2zm0-4h-2v-2h2v2zm-4 4h-2v-2h2v2zm0-4h-2v-2h2v2zm-4 4h-2v-2h2v2zm8-8h-2v-2h2v2z</StreamGeometry>
+      <StreamGeometry x:Key="IconLayers">M12 16.54 4.63 10.8 3 12.07l9 7 9-7-1.64-1.28L12 16.54zM12 14l7.36-5.73L21 7l-9-7-9 7 1.63 1.27L12 14z</StreamGeometry>
       <StreamGeometry x:Key="IconClear">M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z</StreamGeometry>
     </ResourceDictionary>
   </Application.Resources>
@@ -207,6 +208,29 @@
     </Style>
     <Style Selector="Border.chip.solid">
       <Setter Property="Background" Value="{DynamicResource DownBrush}" />
+    </Style>
+    <Style Selector="Border.chip.variant">
+      <Setter Property="BorderBrush" Value="{DynamicResource HudAccentBrush}" />
+      <Setter Property="Background" Value="White" />
+    </Style>
+    <Style Selector="Border.chip.variant TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource HudAccentBrush}" />
+    </Style>
+
+    <!--
+      A box around the pinned variants (colours) of one product: a tinted panel with an accent rail on the left,
+      so cards inside it read as one product at a glance.
+    -->
+    <Style Selector="Border.group">
+      <Setter Property="Background" Value="{DynamicResource HudAccentSoftBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource HudFrameBrush}" />
+      <Setter Property="BorderThickness" Value="3,1,1,1" />
+      <Setter Property="CornerRadius" Value="14" />
+      <Setter Property="Padding" Value="8,10,8,2" />
+      <Setter Property="Margin" Value="0,2,0,12" />
+    </Style>
+    <Style Selector="Border.group Border.card">
+      <Setter Property="Background" Value="#E6FFFFFF" />
     </Style>
     <Style Selector="Border.chip.solid TextBlock">
       <Setter Property="Foreground" Value="White" />

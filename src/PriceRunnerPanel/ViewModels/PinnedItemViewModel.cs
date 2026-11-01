@@ -107,6 +107,13 @@ public sealed partial class PinnedItemViewModel : ObservableObject
     [ObservableProperty]
     public partial bool IsChecking { get; set; }
 
+    /// <summary>This card's variant inside a group box (e.g. "Midnight Blue"); null when it stands alone.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasVariant))]
+    public partial string? VariantLabel { get; set; }
+
+    public bool HasVariant => VariantLabel is not null;
+
     [ObservableProperty]
     public partial string TargetInput { get; set; }
 

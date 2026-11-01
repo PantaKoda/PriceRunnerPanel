@@ -31,6 +31,12 @@ public sealed record PriceSnapshot(
 
 public sealed record PricePoint(DateTimeOffset At, decimal Price);
 
+/// <summary>
+/// PriceRunner's grouping of one product's variants (usually colours): a stable key, the shared base name and each
+/// member's variant label by product id.
+/// </summary>
+public sealed record ProductGroup(string Key, string Name, IReadOnlyDictionary<string, string> Variants);
+
 /// <summary>A pinned product and everything we have learned about its price. Persisted as JSON.</summary>
 public sealed class PinnedProduct
 {
@@ -55,6 +61,18 @@ public sealed class PinnedProduct
     public string? CheapestMerchant { get; set; }
     public string? CheapestOfferUrl { get; set; }
     public int OfferCount { get; set; }
+
+    /// <summary>PriceRunner's variant group (same product, other colours); null when the product has no variants.</summary>
+    public string? GroupKey { get; set; }
+
+    /// <summary>The product's name without its variant, e.g. "Sony WH-1000XM6".</summary>
+    public string? GroupName { get; set; }
+
+    /// <summary>This product's variant within its group, e.g. "Midnight Blue".</summary>
+    public string? Variant { get; set; }
+
+    /// <summary>The variant group was looked up (successfully); old pins are looked up on the next check.</summary>
+    public bool GroupResolved { get; set; }
 
     /// <summary>One point per observed price change (plus the first observation).</summary>
     public List<PricePoint> History { get; set; } = [];
