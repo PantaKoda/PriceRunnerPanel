@@ -13,6 +13,10 @@ Built with .NET 10 and Avalonia 12, in the same "HUD" visual language as Repo Wa
 1. Download `PriceRunnerPanel-X.Y.Z-win-x64.zip` from [Releases](https://github.com/PantaKoda/PriceRunnerPanel/releases/latest).
 2. Extract it to `%LOCALAPPDATA%\Programs` (you get `%LOCALAPPDATA%\Programs\PriceRunnerPanel`).
 3. Start `PriceRunnerPanel.exe`. No .NET install needed. The app isn't code-signed, so SmartScreen may ask once.
+   It adds itself to the Start menu, so from then on you can find it in Windows search.
+
+To uninstall, quit the app, then delete that folder, `%LOCALAPPDATA%\PriceRunnerPanel` and the *PriceRunner Panel*
+Start menu shortcut.
 
 From then on the app updates itself: see [Updates](#updates).
 

@@ -106,6 +106,9 @@ public sealed class AppSettings
     /// <summary>Start hidden in the tray when the user signs in to Windows.</summary>
     public bool StartWithWindows { get; set; } = true;
 
+    /// <summary>The Start menu shortcut was created once; if the user deletes it, it stays deleted.</summary>
+    public bool StartMenuShortcutCreated { get; set; }
+
     /// <summary>The newest release a notification was shown for, so each update notifies once.</summary>
     public string? NotifiedUpdate { get; set; }
 

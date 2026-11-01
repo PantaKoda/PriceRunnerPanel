@@ -2,6 +2,11 @@
 
 What changed in each PriceRunner Panel release. The section for a version becomes its GitHub release notes, which the app shows in its update window, so write for people using the app.
 
+## [0.4.1] - 2026-11-01
+
+### Added
+- **Start menu shortcut:** the app adds itself to the Start menu, so you can find it in Windows search and pin it to the taskbar. If you delete the shortcut, it stays deleted.
+
 ## [0.4.0] - 2026-11-01
 
 ### Added

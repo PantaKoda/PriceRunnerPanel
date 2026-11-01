@@ -66,6 +66,12 @@ public partial class App : Application
     /// <summary>Checks GitHub releases on a schedule; a new version shows the UPDATE pill and notifies once.</summary>
     private void StartUpdates(InstallInfo install)
     {
+        // Only a real install gets a shortcut, never a build from source.
+        if (install.IsPortableRelease && Environment.ProcessPath is { } executable)
+        {
+            _viewModel!.SyncStartMenuShortcut(new StartMenuShortcut(executable));
+        }
+
         _updates = new UpdateService(new ReleaseClient(AppInfo.Repository), install);
         _updates.Changed += (_, _) => Dispatcher.UIThread.Post(OnUpdatesChanged);
         _updates.ExitRequested += (_, _) => Dispatcher.UIThread.Post(Quit);

@@ -169,6 +169,22 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         return enabled;
     }
 
+    /// <summary>
+    /// Adds the Start menu shortcut the first time, and keeps it pointing at this copy if the app moved. A shortcut
+    /// the user deleted is not brought back.
+    /// </summary>
+    public void SyncStartMenuShortcut(StartMenuShortcut shortcut)
+    {
+        var deleted = _state.Settings.StartMenuShortcutCreated && !shortcut.Exists;
+        if (deleted || shortcut.IsCurrent || !shortcut.Save())
+        {
+            return;
+        }
+
+        _state.Settings.StartMenuShortcutCreated = true;
+        _ = SaveAsync();
+    }
+
     /// <summary>The tray and the window's first show call this: checks right away when the last check is stale.</summary>
     public void Start()
     {

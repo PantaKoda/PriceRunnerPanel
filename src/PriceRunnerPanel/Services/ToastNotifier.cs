@@ -13,7 +13,7 @@ namespace PriceRunnerPanel.Services;
 /// </summary>
 public sealed class ToastNotifier
 {
-    private const string AppUserModelId = "PriceRunnerPanel.Desktop";
+    public const string AppUserModelId = "PriceRunnerPanel.Desktop";
     private const string Group = "prices";
 
     private readonly Windows.UI.Notifications.ToastNotifier? _notifier;
