@@ -18,6 +18,8 @@ public static class Format
         return currency == "SEK" ? $"{number} kr" : $"{number} {currency}";
     }
 
+    public static string Count(int value) => value.ToString("N0", Swedish);
+
     public static string Percent(decimal value) => value.ToString("0.#", Swedish) + " %";
 
     public static string Ago(DateTimeOffset? when, DateTimeOffset now)

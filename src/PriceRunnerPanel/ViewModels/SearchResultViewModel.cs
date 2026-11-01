@@ -58,6 +58,10 @@ public sealed partial class SearchResultViewModel : ObservableObject
 
     public string RecentDropText => Hit.RecentDropPercent is { } percent ? $"▼ {Format.Percent(percent)}" : "";
 
+    public bool HasOldPrice => HasRecentDrop && Hit.OldPrice is not null;
+
+    public string OldPriceText => Format.Price(Hit.OldPrice, Hit.Currency);
+
     [ObservableProperty]
     public partial Bitmap? Image { get; set; }
 

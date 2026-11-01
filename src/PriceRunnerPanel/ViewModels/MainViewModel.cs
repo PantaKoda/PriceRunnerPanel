@@ -43,6 +43,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _images = images;
         _toasts = toasts;
         _state = store.Load();
+        Deals = new DealsViewModel(this, client);
 
         foreach (var pin in _state.Pins)
         {
@@ -66,6 +67,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     public ObservableCollection<SearchResultViewModel> Results { get; } = [];
 
+    /// <summary>The Black Friday tab.</summary>
+    public DealsViewModel Deals { get; }
+
     public ObservableCollection<PinnedItemViewModel> Pins { get; } = [];
 
     /// <summary>The watchlist as shown: pins grouped so the variants (colours) of one product share a box.</summary>
@@ -85,6 +89,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     public partial bool IsSearchTab { get; set; }
+
+    [ObservableProperty]
+    public partial bool IsDealsTab { get; set; }
 
     [ObservableProperty]
     public partial bool IsWatchlistTab { get; set; }
@@ -180,6 +187,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _timer.Stop();
         _searchCts?.Cancel();
         _searchCts?.Dispose();
+        Deals.Dispose();
     }
 
     public void OpenUrl(string url)
@@ -211,14 +219,23 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
-    private void ShowWatchlist() => SetTab(search: false);
+    private void ShowDeals()
+    {
+        SetTab(deals: true);
+        Deals.OnOpened();
+    }
 
-    // A click on the already-selected tab toggles the button off locally; re-announcing both values puts it back.
-    private void SetTab(bool search)
+    [RelayCommand]
+    private void ShowWatchlist() => SetTab(watchlist: true);
+
+    // A click on the already-selected tab toggles the button off locally; re-announcing the values puts it back.
+    private void SetTab(bool search = false, bool deals = false, bool watchlist = false)
     {
         IsSearchTab = search;
-        IsWatchlistTab = !search;
+        IsDealsTab = deals;
+        IsWatchlistTab = watchlist;
         OnPropertyChanged(nameof(IsSearchTab));
+        OnPropertyChanged(nameof(IsDealsTab));
         OnPropertyChanged(nameof(IsWatchlistTab));
     }
 
@@ -312,7 +329,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         var item = CreatePinned(product);
         item.Image = result.Image;
         Pins.Insert(0, item);
-        result.IsPinned = true;
+        ShowPinned(hit.Id, pinned: true);
         FooterText = $"Pinned {hit.Name}";
         await SaveAsync();
 
@@ -338,10 +355,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     {
         Pins.Remove(item);
         _state.Pins.Remove(item.Product);
-        foreach (var result in Results.Where(r => r.Hit.Id == item.Id))
-        {
-            result.IsPinned = false;
-        }
+        ShowPinned(item.Id, pinned: false);
 
         if (!_state.Pins.Any(p => p.ImagePath == item.Product.ImagePath))
         {
@@ -412,12 +426,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             }
 
             Results.Clear();
-            var pinned = Pins.Select(p => p.Id).ToHashSet();
             foreach (var hit in hits)
             {
-                var row = new SearchResultViewModel(this, hit, pinned.Contains(hit.Id));
-                Results.Add(row);
-                _ = LoadImageAsync(hit.ImagePath, bitmap => row.Image = bitmap);
+                Results.Add(CreateResultRow(hit));
             }
 
             OnPropertyChanged(nameof(HasResults));
@@ -502,6 +513,25 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         FooterText = $"{title}: {product.Name}";
         var url = PriceRunnerClient.ProductPageUrl(product.Url);
         _toasts.Show(title, $"{product.Name}\n{price}{where}{was}{context}", product.Id, () => OpenUrl(url));
+    }
+
+    /// <summary>A product row for the search or Black Friday tab, with its picture on the way.</summary>
+    internal SearchResultViewModel CreateResultRow(SearchHit hit)
+    {
+        var row = new SearchResultViewModel(this, hit, Pins.Any(p => p.Id == hit.Id));
+        _ = LoadImageAsync(hit.ImagePath, bitmap => row.Image = bitmap);
+        return row;
+    }
+
+    internal void ReleaseImage(string? imagePath) => _images.Release(PriceRunnerClient.ImageUrl(imagePath));
+
+    /// <summary>A product can be listed on both the search and the Black Friday tab; both show its pin.</summary>
+    private void ShowPinned(string id, bool pinned)
+    {
+        foreach (var row in Results.Concat(Deals.Items).Where(r => r.Hit.Id == id))
+        {
+            row.IsPinned = pinned;
+        }
     }
 
     private PinnedItemViewModel CreatePinned(PinnedProduct product)

@@ -2,6 +2,11 @@
 
 What changed in each PriceRunner Panel release. The section for a version becomes its GitHub release notes, which the app shows in its update window, so write for people using the app.
 
+## [0.4.0] - 2026-11-01
+
+### Added
+- **Black Friday tab:** PriceRunner's current deals (10 % off or more), newest drops first. Filter by **category** and **store**, with the popular ones on top and a search box for the rest; tick several if you like. **PIN** adds a deal to your watchlist, where its verdict shows whether the discount is real. Deals aren't saved.
+
 ## [0.3.0] - 2026-11-01
 
 ### Added

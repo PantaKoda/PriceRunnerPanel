@@ -7,12 +7,13 @@ using PriceRunnerPanel.Models;
 namespace PriceRunnerPanel.Services;
 
 /// <summary>
-/// Talks to the public JSON endpoints the pricerunner.se web app uses: product search and the offers of one
-/// product, its variants and its price history. Read-only and anonymous; no cookies or sign-in.
+/// Talks to the public JSON endpoints the pricerunner.se web app uses: product search, current deals and the offers
+/// of one product, its variants and its price history. Read-only and anonymous; no cookies or sign-in.
 /// </summary>
 public sealed class PriceRunnerClient : IDisposable
 {
     public const string Site = "https://www.pricerunner.se";
+    public const int DealsPageSize = 32;
     private const string Market = "SE";
     private const string ImageHost = "https://owp.klarna.com";
 
@@ -69,33 +70,33 @@ public sealed class PriceRunnerClient : IDisposable
             return [];
         }
 
-        var hits = new List<SearchHit>();
-        foreach (var p in products.EnumerateArray())
-        {
-            if (Str(p, "id") is not { } id || Str(p, "name") is not { } name || Str(p, "url") is not { } productUrl)
-            {
-                continue;
-            }
+        return ParseHits(products);
+    }
 
-            var lowest = Money(p, "lowestPrice");
-            var rating = Obj(p, "rating");
-            hits.Add(new SearchHit(
-                id,
-                name,
-                Str(p, "description"),
-                Str(Obj(p, "category"), "name"),
-                productUrl,
-                Str(Obj(p, "image"), "path"),
-                lowest?.Amount,
-                lowest?.Currency ?? "SEK",
-                Dec(Obj(p, "priceDrop"), "percent"),
-                (double?)Dec(rating, "average"),
-                Int(rating, "count"),
-                Int(Obj(p, "previewMerchants"), "count"),
-                p.TryGetProperty("outOfStock", out var outOfStock) && outOfStock.ValueKind == JsonValueKind.True));
-        }
+    /// <summary>
+    /// Current deals: products at least 10 % below their earlier price, newest drops first. This is the list on
+    /// pricerunner.se/c/black-friday, which shows PriceRunner's deals all year round.
+    /// </summary>
+    public async Task<DealsPage> GetDealsAsync(IReadOnlyCollection<int> categories, IReadOnlyCollection<int> merchants, int offset, CancellationToken cancellationToken)
+    {
+        var url = $"/se/api/deals-edge-rest/public/search/deals/products/v3/{Market}?{DealFilters(categories, merchants)}"
+            + $"&sorting=LATESTPRICEDROP_DESC,GLOBALRANK_ASC&size={DealsPageSize}&offset={offset}";
+        using var document = await GetJsonAsync(url, cancellationToken).ConfigureAwait(false);
+        var root = document.RootElement;
+        var hits = root.TryGetProperty("products", out var products) && products.ValueKind == JsonValueKind.Array ? ParseHits(products) : [];
+        return new DealsPage(Int(root, "totalHits"), hits);
+    }
 
-        return hits;
+    /// <summary>
+    /// The filter choices for the deals. PriceRunner narrows each filter by the other one's selection (the stores
+    /// that have deals in the chosen categories), and lists the popular choices separately from the rest.
+    /// </summary>
+    public async Task<DealFacets> GetDealFacetsAsync(IReadOnlyCollection<int> categories, IReadOnlyCollection<int> merchants, CancellationToken cancellationToken)
+    {
+        var url = $"/se/api/deals-edge-rest/public/search/deals/facets/{Market}?{DealFilters(categories, merchants)}&size={DealsPageSize}";
+        using var document = await GetJsonAsync(url, cancellationToken).ConfigureAwait(false);
+        var facets = Obj(document.RootElement, "facets");
+        return new DealFacets(ParseFacet(Obj(facets, "CATEGORY")), ParseFacet(Obj(facets, "MERCHANT_DEAL")));
     }
 
     public async Task<PriceSnapshot> GetPriceAsync(string productId, CancellationToken cancellationToken)
@@ -236,6 +237,77 @@ public sealed class PriceRunnerClient : IDisposable
     }
 
     public void Dispose() => _http.Dispose();
+
+    private static string DealFilters(IReadOnlyCollection<int> categories, IReadOnlyCollection<int> merchants)
+    {
+        var filters = "af_PRICE_DROP=-90_-10";
+        if (categories.Count > 0)
+        {
+            filters += $"&af_CATEGORY={string.Join(',', categories)}";
+        }
+
+        if (merchants.Count > 0)
+        {
+            filters += $"&af_MERCHANT_DEAL={string.Join(',', merchants)}";
+        }
+
+        return filters;
+    }
+
+    private static List<SearchHit> ParseHits(JsonElement products)
+    {
+        var hits = new List<SearchHit>();
+        foreach (var p in products.EnumerateArray())
+        {
+            if (Str(p, "id") is not { } id || Str(p, "name") is not { } name || Str(p, "url") is not { } productUrl)
+            {
+                continue;
+            }
+
+            var lowest = Money(p, "lowestPrice");
+            var rating = Obj(p, "rating");
+            var drop = Obj(p, "priceDrop");
+            hits.Add(new SearchHit(
+                id,
+                name,
+                Str(p, "description"),
+                Str(Obj(p, "category"), "name"),
+                productUrl,
+                Str(Obj(p, "image"), "path"),
+                lowest?.Amount,
+                lowest?.Currency ?? "SEK",
+                Dec(drop, "percent"),
+                Money(drop, "oldPrice")?.Amount,
+                (double?)Dec(rating, "average"),
+                Int(rating, "count"),
+                Int(Obj(p, "previewMerchants"), "count"),
+                p.TryGetProperty("outOfStock", out var outOfStock) && outOfStock.ValueKind == JsonValueKind.True));
+        }
+
+        return hits;
+    }
+
+    /// <summary>The popular choices in PriceRunner's order ("rankedCounts"), then all the others, largest first.</summary>
+    private static List<DealFacetOption> ParseFacet(JsonElement container)
+    {
+        var facet = Obj(container, "facet");
+        var options = new List<DealFacetOption>();
+        var seen = new HashSet<int>();
+        foreach (var (list, sort) in new[] { ("rankedCounts", false), ("counts", true) })
+        {
+            if (facet.ValueKind != JsonValueKind.Object || !facet.TryGetProperty(list, out var counts) || counts.ValueKind != JsonValueKind.Array)
+            {
+                continue;
+            }
+
+            var parsed = counts.EnumerateArray()
+                .Where(c => Str(c, "optionValue") is not null && Int(c, "optionId") > 0)
+                .Select(c => new DealFacetOption(Int(c, "optionId"), Str(c, "optionValue")!, Int(c, "count")));
+            options.AddRange((sort ? parsed.OrderByDescending(o => o.Count) : parsed).Where(o => seen.Add(o.Id)));
+        }
+
+        return options;
+    }
 
     private async Task<JsonDocument> GetJsonAsync(string url, CancellationToken cancellationToken)
     {

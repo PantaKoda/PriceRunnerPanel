@@ -57,6 +57,7 @@
       <StreamGeometry x:Key="IconTarget">M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8zm0-14a6 6 0 1 0 6 6 6 6 0 0 0-6-6zm0 10a4 4 0 1 1 4-4 4 4 0 0 1-4 4zm0-6a2 2 0 1 0 2 2 2 2 0 0 0-2-2z</StreamGeometry>
       <StreamGeometry x:Key="IconGrip">M22 22h-2v-2h2v2zm0-4h-2v-2h2v2zm-4 4h-2v-2h2v2zm0-4h-2v-2h2v2zm-4 4h-2v-2h2v2zm8-8h-2v-2h2v2z</StreamGeometry>
       <StreamGeometry x:Key="IconUpdate">M12 16.5l4-4h-3v-9h-2v9H8l4 4zm9-13h-6v1.99h6v14.03H3V5.49h6V3.5H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2v-14c0-1.1-.9-2-2-2z</StreamGeometry>
+      <StreamGeometry x:Key="IconDeal">F1 M2 3.5C2 2.67 2.67 2 3.5 2h7.17c.4 0 .78.16 1.06.44l9.83 9.83c.59.59.59 1.54 0 2.12l-7.17 7.17c-.59.59-1.54.59-2.12 0L2.44 11.73A1.5 1.5 0 0 1 2 10.67V3.5zM7 8.75a1.75 1.75 0 1 0 0-3.5 1.75 1.75 0 0 0 0 3.5z</StreamGeometry>
       <StreamGeometry x:Key="IconLayers">M12 16.54 4.63 10.8 3 12.07l9 7 9-7-1.64-1.28L12 16.54zM12 14l7.36-5.73L21 7l-9-7-9 7 1.63 1.27L12 14z</StreamGeometry>
       <StreamGeometry x:Key="IconClear">M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z</StreamGeometry>
     </ResourceDictionary>
@@ -119,7 +120,7 @@
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="BorderThickness" Value="0" />
       <Setter Property="CornerRadius" Value="8" />
-      <Setter Property="Padding" Value="14,6" />
+      <Setter Property="Padding" Value="10,6" />
       <Setter Property="HorizontalAlignment" Value="Stretch" />
       <Setter Property="HorizontalContentAlignment" Value="Center" />
       <Setter Property="Foreground" Value="{DynamicResource HudDimBrush}" />
@@ -408,6 +409,22 @@
     </Style>
     <Style Selector="Button.pill:pointerover /template/ ContentPresenter">
       <Setter Property="Background" Value="White" />
+      <Setter Property="BorderBrush" Value="{DynamicResource HudAccentBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource HudAccentBrush}" />
+    </Style>
+
+    <!-- The deals filters' dropdowns. -->
+    <Style Selector="FlyoutPresenter">
+      <Setter Property="Background" Value="White" />
+      <Setter Property="BorderBrush" Value="{DynamicResource HudFrameBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="12" />
+      <Setter Property="Padding" Value="10" />
+      <Setter Property="MaxWidth" Value="320" />
+    </Style>
+
+    <!-- A deals filter with something ticked. -->
+    <Style Selector="Button.pill.active">
       <Setter Property="BorderBrush" Value="{DynamicResource HudAccentBrush}" />
       <Setter Property="Foreground" Value="{DynamicResource HudAccentBrush}" />
     </Style>

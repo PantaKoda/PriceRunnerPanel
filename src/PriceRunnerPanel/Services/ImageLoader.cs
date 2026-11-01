@@ -27,6 +27,15 @@ public sealed class ImageLoader(HttpClient http, string cacheDirectory)
         TryDelete(FileFor(url));
     }
 
+    /// <summary>Lets go of a picture in memory (the file stays); rows that still show it keep their own reference.</summary>
+    public void Release(string? url)
+    {
+        if (!string.IsNullOrEmpty(url))
+        {
+            _memory.TryRemove(url, out _);
+        }
+    }
+
     /// <summary>Deletes every cached picture except <paramref name="keepUrls"/>, e.g. search thumbnails from earlier runs.</summary>
     public void Prune(IEnumerable<string?> keepUrls)
     {

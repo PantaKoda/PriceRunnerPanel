@@ -11,10 +11,20 @@ public sealed record SearchHit(
     decimal? LowestPrice,
     string Currency,
     decimal? RecentDropPercent,
+    decimal? OldPrice,
     double? Rating,
     int RatingCount,
     int StoreCount,
     bool OutOfStock);
+
+/// <summary>One page of PriceRunner's deals. <see cref="Total"/> is capped by PriceRunner at 10 000.</summary>
+public sealed record DealsPage(int Total, IReadOnlyList<SearchHit> Hits);
+
+/// <summary>One choice in a deals filter: a category or a store, and how many deals it has.</summary>
+public sealed record DealFacetOption(int Id, string Name, int Count);
+
+/// <summary>What the deals can be filtered by, most popular first.</summary>
+public sealed record DealFacets(IReadOnlyList<DealFacetOption> Categories, IReadOnlyList<DealFacetOption> Merchants);
 
 /// <summary>The current offers for one product: what it costs right now and where.</summary>
 public sealed record PriceSnapshot(
