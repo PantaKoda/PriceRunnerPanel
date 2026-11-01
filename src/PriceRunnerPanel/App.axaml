@@ -54,6 +54,7 @@
       <StreamGeometry x:Key="IconStore">M20 4H4v2h16V4zm1 10v-2l-1-5H4l-1 5v2h1v6h10v-6h4v6h2v-6h1zm-9 4H6v-4h6v4z</StreamGeometry>
       <StreamGeometry x:Key="IconTarget">M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8zm0-14a6 6 0 1 0 6 6 6 6 0 0 0-6-6zm0 10a4 4 0 1 1 4-4 4 4 0 0 1-4 4zm0-6a2 2 0 1 0 2 2 2 2 0 0 0-2-2z</StreamGeometry>
       <StreamGeometry x:Key="IconGrip">M22 22h-2v-2h2v2zm0-4h-2v-2h2v2zm-4 4h-2v-2h2v2zm0-4h-2v-2h2v2zm-4 4h-2v-2h2v2zm8-8h-2v-2h2v2z</StreamGeometry>
+      <StreamGeometry x:Key="IconUpdate">M12 16.5l4-4h-3v-9h-2v9H8l4 4zm9-13h-6v1.99h6v14.03H3V5.49h6V3.5H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2v-14c0-1.1-.9-2-2-2z</StreamGeometry>
       <StreamGeometry x:Key="IconLayers">M12 16.54 4.63 10.8 3 12.07l9 7 9-7-1.64-1.28L12 16.54zM12 14l7.36-5.73L21 7l-9-7-9 7 1.63 1.27L12 14z</StreamGeometry>
       <StreamGeometry x:Key="IconClear">M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z</StreamGeometry>
     </ResourceDictionary>
@@ -383,6 +384,45 @@
     <Style Selector="Button.accent:pointerover /template/ ContentPresenter">
       <Setter Property="Background" Value="#006A88" />
       <Setter Property="Foreground" Value="White" />
+    </Style>
+
+    <!-- Quiet secondary button in dialogs. -->
+    <Style Selector="Button.pill">
+      <Setter Property="Padding" Value="10,4" />
+      <Setter Property="MinHeight" Value="26" />
+      <Setter Property="CornerRadius" Value="13" />
+      <Setter Property="Background" Value="White" />
+      <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+      <Setter Property="FontSize" Value="11" />
+    </Style>
+    <Style Selector="Button.pill:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="White" />
+      <Setter Property="BorderBrush" Value="{DynamicResource HudAccentBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource HudAccentBrush}" />
+    </Style>
+
+    <!-- Header "UPDATE" pill: shown only when a newer release exists; breathes gently to be noticed. -->
+    <Style Selector="Button.update">
+      <Setter Property="Padding" Value="7,2" />
+      <Setter Property="Margin" Value="0,0,4,0" />
+      <Setter Property="MinHeight" Value="22" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="CornerRadius" Value="11" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="BorderBrush" Value="{DynamicResource TargetBrush}" />
+      <Setter Property="Background" Value="{DynamicResource TargetSoftBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource TargetBrush}" />
+    </Style>
+    <Style Selector="Button.update:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource TargetBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource TargetBrush}" />
+      <Setter Property="Foreground" Value="White" />
+    </Style>
+    <Style Selector="Button.update PathIcon">
+      <Setter Property="Width" Value="11" />
+      <Setter Property="Height" Value="11" />
     </Style>
 
     <!-- Scan line: a thin indeterminate bar shown only while something is active. -->

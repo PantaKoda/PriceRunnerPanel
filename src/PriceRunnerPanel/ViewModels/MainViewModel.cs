@@ -106,6 +106,34 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     public bool HasResults => Results.Count > 0;
 
+    /// <summary>A newer release exists: the header shows the UPDATE pill.</summary>
+    [ObservableProperty]
+    public partial bool UpdateAvailable { get; set; }
+
+    [ObservableProperty]
+    public partial string UpdateTooltip { get; set; } = "";
+
+    /// <summary>The UPDATE pill was clicked; the app opens the update window.</summary>
+    public event EventHandler? UpdateRequested;
+
+    [RelayCommand]
+    private void OpenUpdate() => UpdateRequested?.Invoke(this, EventArgs.Empty);
+
+    /// <summary>Records that <paramref name="version"/> was announced; false when it already was.</summary>
+    public bool MarkUpdateNotified(string version)
+    {
+        if (_state.Settings.NotifiedUpdate == version)
+        {
+            return false;
+        }
+
+        _state.Settings.NotifiedUpdate = version;
+        _ = SaveAsync();
+        return true;
+    }
+
+    public void ShowMessage(string message) => FooterText = message;
+
     public bool StartWithWindows => _state.Settings.StartWithWindows;
 
     /// <summary>Turns sign-in startup on or off. Returns the resulting state (unchanged if Windows refused).</summary>
@@ -146,7 +174,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     public void OpenUrl(string url)
     {
-        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || (uri.Scheme != Uri.UriSchemeHttps && uri.Scheme != Uri.UriSchemeHttp))
+        // Only plain https links reach the browser: no other schemes, no "user@host" disguises.
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps || !string.IsNullOrEmpty(uri.UserInfo))
         {
             return;
         }

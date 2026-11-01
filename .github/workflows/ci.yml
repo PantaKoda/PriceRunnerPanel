@@ -1,0 +1,56 @@
+name: CI
+
+# Every push to main and every pull request is built (locked restore, warnings as errors). Pull requests run with a
+# read-only token and no secrets ("pull_request", never "pull_request_target"), so a fork's code can't publish anything.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      # Actions are pinned to full commit SHAs (tags can be moved); Dependabot keeps them current.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+      - run: dotnet restore PriceRunnerPanel.slnx --locked-mode
+      - run: dotnet build PriceRunnerPanel.slnx --configuration Release --no-restore
+
+  package:
+    # The portable release zip, built by the same script as releases. Uploaded for inspection only:
+    # publishing a release is a separate, tag-triggered workflow.
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+      - run: pwsh scripts/publish-windows.ps1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: pricerunnerpanel-win-x64
+          path: |
+            artifacts/release/*.zip
+            artifacts/release/*.sha256
+          if-no-files-found: error

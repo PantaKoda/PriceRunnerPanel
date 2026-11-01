@@ -15,9 +15,7 @@ public sealed class StateStore
 
     public StateStore(string? directory = null)
     {
-        DataDirectory = directory
-            ?? Environment.GetEnvironmentVariable("PRICERUNNERPANEL_DATA")
-            ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PriceRunnerPanel");
+        DataDirectory = directory ?? AppInfo.DataDirectory;
         Directory.CreateDirectory(DataDirectory);
         FilePath = Path.Combine(DataDirectory, "state.json");
     }

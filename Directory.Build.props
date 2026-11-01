@@ -6,6 +6,9 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <AnalysisLevel>latest</AnalysisLevel>
     <Deterministic>true</Deterministic>
+    <!-- Supply chain: restore exactly the packages recorded in packages.lock.json (CI and releases use locked mode). -->
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <PathMap Condition="'$(ContinuousIntegrationBuild)' == 'true'">$(MSBuildThisFileDirectory)=/_/</PathMap>
 
     <Company>PriceRunner Panel</Company>
     <Product>PriceRunner Panel</Product>

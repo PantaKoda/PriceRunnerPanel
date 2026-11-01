@@ -5,6 +5,7 @@ using Avalonia.Markup.Xaml;
 using Avalonia.Platform;
 using Avalonia.Threading;
 using PriceRunnerPanel.Services;
+using PriceRunnerPanel.Updates;
 using PriceRunnerPanel.ViewModels;
 using PriceRunnerPanel.Views;
 
@@ -16,6 +17,10 @@ public partial class App : Application
     private MainViewModel? _viewModel;
     private MainWindow? _window;
     private TrayIcon? _tray;
+    private ToastNotifier? _toasts;
+    private UpdateService? _updates;
+    private UpdateWindow? _updateWindow;
+    private IClassicDesktopStyleApplicationLifetime? _desktop;
 
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
 
@@ -26,7 +31,9 @@ public partial class App : Application
             var store = new StateStore();
             _client = new PriceRunnerClient();
             var images = new ImageLoader(_client.Http, Path.Combine(store.DataDirectory, "images"));
-            _viewModel = new MainViewModel(store, _client, new PriceTracker(_client, TimeProvider.System), images, new ToastNotifier());
+            _toasts = new ToastNotifier();
+            _viewModel = new MainViewModel(store, _client, new PriceTracker(_client, TimeProvider.System), images, _toasts);
+            _desktop = desktop;
 
             using var iconStream = AssetLoader.Open(new Uri("avares://PriceRunnerPanel/Assets/PriceRunnerPanel.ico"));
             var icon = new WindowIcon(iconStream);
@@ -50,9 +57,84 @@ public partial class App : Application
 
             _viewModel.Start();
             Program.ShowRequested += (_, _) => Dispatcher.UIThread.Post(ShowWindow);
+            StartUpdates(InstallInfo.Detect(desktop.Args ?? []));
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    /// <summary>Checks GitHub releases on a schedule; a new version shows the UPDATE pill and notifies once.</summary>
+    private void StartUpdates(InstallInfo install)
+    {
+        _updates = new UpdateService(new ReleaseClient(AppInfo.Repository), install);
+        _updates.Changed += (_, _) => Dispatcher.UIThread.Post(OnUpdatesChanged);
+        _updates.ExitRequested += (_, _) => Dispatcher.UIThread.Post(Quit);
+        _viewModel!.UpdateRequested += (_, _) => ShowUpdateWindow();
+
+        if (install.UpdatedFrom is { } from)
+        {
+            _viewModel.ShowMessage($"Updated to {install.Version} (from {from})");
+            AppInfo.Log($"Updated from {from} to {install.Version}");
+        }
+        else if (install.UpdateFailed is { } failure)
+        {
+            _viewModel.ShowMessage("The last update couldn't be applied — see the update window");
+            AppInfo.Log(failure);
+        }
+
+        _updates.Start();
+    }
+
+    private void OnUpdatesChanged()
+    {
+        if (_updates is null || _viewModel is null)
+        {
+            return;
+        }
+
+        var latest = _updates.Latest;
+        _viewModel.UpdateAvailable = latest is not null;
+        _viewModel.UpdateTooltip = latest is null ? "" : $"Version {latest.Version} is available (you have {_updates.Current}). Click to see what's new.";
+        if (_updates.Stage == Updates.UpdateStage.Available && latest is not null && _viewModel.MarkUpdateNotified(latest.Version.ToString()))
+        {
+            _toasts?.Show(
+                "Update available",
+                $"PriceRunner Panel {latest.Version} is ready to install (you have {_updates.Current}).",
+                "update",
+                () => Dispatcher.UIThread.Post(ShowUpdateWindow));
+        }
+    }
+
+    private void ShowUpdateWindow()
+    {
+        if (_updates is null)
+        {
+            return;
+        }
+
+        if (_updateWindow is { } open)
+        {
+            open.Activate();
+            return;
+        }
+
+        _updateWindow = new UpdateWindow { DataContext = new UpdateViewModel(_updates, url => _viewModel?.OpenUrl(url)), Icon = _window?.Icon };
+        _updateWindow.Closed += (_, _) => _updateWindow = null;
+        _updateWindow.Show();
+        if (_updates.Stage is Updates.UpdateStage.Idle or Updates.UpdateStage.CheckFailed)
+        {
+            _ = _updates.CheckNowAsync();
+        }
+    }
+
+    private void Quit()
+    {
+        if (_window is not null)
+        {
+            _window.AllowClose = true;
+        }
+
+        _desktop?.Shutdown();
     }
 
     private void CreateTray(IClassicDesktopStyleApplicationLifetime desktop, WindowIcon icon, StartupRegistration startup)
@@ -60,6 +142,11 @@ public partial class App : Application
         var menu = new NativeMenu();
         menu.Items.Add(Item("Open panel", ShowWindow));
         menu.Items.Add(Item("Check prices now", () => _ = _viewModel?.CheckAllAsync()));
+        menu.Items.Add(Item("Check for updates…", () =>
+        {
+            ShowUpdateWindow();
+            _ = _updates?.CheckNowAsync();
+        }));
         menu.Items.Add(new NativeMenuItemSeparator());
         var autostart = new NativeMenuItem("Start with Windows")
         {
@@ -75,15 +162,7 @@ public partial class App : Application
         };
         menu.Items.Add(autostart);
         menu.Items.Add(new NativeMenuItemSeparator());
-        menu.Items.Add(Item("Quit PriceRunner Panel", () =>
-        {
-            if (_window is not null)
-            {
-                _window.AllowClose = true;
-            }
-
-            desktop.Shutdown();
-        }));
+        menu.Items.Add(Item("Quit PriceRunner Panel", Quit));
 
         _tray = new TrayIcon { Icon = icon, ToolTipText = "PriceRunner Panel", Menu = menu, IsVisible = true };
         _tray.Clicked += (_, _) => ToggleWindow();
@@ -127,6 +206,7 @@ public partial class App : Application
         }
 
         _viewModel?.Dispose();
+        _updates?.Dispose();
         _client?.Dispose();
     }
 

@@ -35,8 +35,18 @@ public sealed class PriceRunnerClient : IDisposable
     /// <summary>Shared with the image loader so both use one connection pool.</summary>
     public HttpClient Http => _http;
 
-    public static string ProductPageUrl(string relativeUrl) =>
-        relativeUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? relativeUrl : Site + relativeUrl;
+    /// <summary>
+    /// A product's page on pricerunner.se. The path comes from PriceRunner's data, so it is resolved as a URL (never
+    /// glued onto the site as text, where "@evil.example" would change the host) and must stay on pricerunner.se.
+    /// </summary>
+    public static string ProductPageUrl(string relativeUrl)
+    {
+        var site = new Uri(Site);
+        return Uri.TryCreate(site, relativeUrl, out var url) && url.Scheme == Uri.UriSchemeHttps
+            && string.Equals(url.IdnHost, site.IdnHost, StringComparison.OrdinalIgnoreCase) && string.IsNullOrEmpty(url.UserInfo)
+            ? url.AbsoluteUri
+            : Site;
+    }
 
     /// <summary>Thumbnail URL for an image path such as <c>/product/3216619431/Name.jpg</c>.</summary>
     public static string? ImageUrl(string? imagePath, int size = 112)

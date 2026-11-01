@@ -85,6 +85,9 @@ public sealed class AppSettings
     /// <summary>Start hidden in the tray when the user signs in to Windows.</summary>
     public bool StartWithWindows { get; set; } = true;
 
+    /// <summary>The newest release a notification was shown for, so each update notifies once.</summary>
+    public string? NotifiedUpdate { get; set; }
+
     /// <summary>Drops smaller than this (in percent of the previous price) do not notify.</summary>
     public decimal MinDropPercent { get; set; } = 1;
 }

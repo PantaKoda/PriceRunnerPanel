@@ -130,6 +130,14 @@
               </Grid>
             </Border>
             <StackPanel Grid.Column="2" Orientation="Horizontal">
+              <!-- A newer release exists: opens the update window. -->
+              <Button Classes="update" Command="{Binding OpenUpdateCommand}" IsVisible="{Binding UpdateAvailable}"
+                      ToolTip.Tip="{Binding UpdateTooltip}" AutomationProperties.Name="Update available">
+                <StackPanel Orientation="Horizontal" Spacing="4">
+                  <PathIcon Data="{StaticResource IconUpdate}" />
+                  <TextBlock Text="UPDATE" FontSize="10" FontWeight="SemiBold" LetterSpacing="1.2" VerticalAlignment="Center" />
+                </StackPanel>
+              </Button>
               <Button Classes="icon" Classes.spinning="{Binding IsChecking}" Command="{Binding CheckAllCommand}" IsVisible="{Binding HasPins}"
                       ToolTip.Tip="Check all prices now (F5)" AutomationProperties.Name="Check all prices now">
                 <PathIcon Data="{StaticResource IconRefresh}" />
