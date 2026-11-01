@@ -2,6 +2,11 @@
 
 What changed in each PriceRunner Panel release. The section for a version becomes its GitHub release notes, which the app shows in its update window, so write for people using the app.
 
+## [0.4.7] - 2026-11-01
+
+### Changed
+- **Starts faster, uses less memory:** the window appears in about half the time, the app keeps roughly 100 MB less memory and far fewer threads, and it no longer depends on the graphics driver. Browsing the Black Friday tab and searching leave less behind. Nothing looks or works differently; the download is somewhat larger.
+
 ## [0.4.6] - 2026-11-01
 
 ### Added
