@@ -2,6 +2,15 @@
 
 What changed in each PriceRunner Panel release. The section for a version becomes its GitHub release notes, which the app shows in its update window, so write for people using the app.
 
+## [0.4.4] - 2026-11-01
+
+### Added
+- **Filter deals by discount:** type a range (say 30–50 %) or pick 10, 20, 30 or 50 %+ on the Black Friday tab. This is the discount PriceRunner reports.
+- **Both views of a deal, side by side:** while a filter is on, each listing also gets the verdict and the typical price and 1-year low, without pinning. Watchlist cards now also show the drop PriceRunner reports next to the verdict.
+
+### Fixed
+- **Sale prices were missed.** A store's campaign price (a sale between two dates) was ignored, so watchlist prices could be too high during a sale, and listings could show a store's regular price, like *At Elgiganten: 5 879 kr* for a deal at 3 999 kr. Prices now match what PriceRunner lists.
+
 ## [0.4.3] - 2026-11-01
 
 ### Added

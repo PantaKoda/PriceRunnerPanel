@@ -87,6 +87,34 @@ public sealed partial class SearchResultViewModel : ObservableObject
             : $"This store's own price. The {PriceText} on the right is the lowest price at any store.";
     }
 
+    private DealInsight _insight = DealInsight.None;
+
+    public bool HasVerdict => _insight.HasVerdict;
+
+    public string VerdictText => _insight.Label;
+
+    public string VerdictTip => _insight.Explain(Hit.Currency);
+
+    public bool IsGoodDeal => _insight.IsGoodDeal;
+
+    public bool IsInflated => _insight.IsInflated;
+
+    public bool IsOverpriced => _insight.IsOverpriced;
+
+    public string InsightText => _insight.Summary(Hit.Currency);
+
+    public bool HasInsight => InsightText.Length > 0;
+
+    /// <summary>Judges this listing's price against the product's past year. Kept in memory only.</summary>
+    public void ShowInsight(IReadOnlyList<MarketPoint> history)
+    {
+        _insight = DealAnalysis.Analyze(Hit.LowestPrice, history, DateOnly.FromDateTime(DateTime.Now));
+        foreach (var name in new[] { nameof(HasVerdict), nameof(VerdictText), nameof(VerdictTip), nameof(IsGoodDeal), nameof(IsInflated), nameof(IsOverpriced), nameof(InsightText), nameof(HasInsight) })
+        {
+            OnPropertyChanged(name);
+        }
+    }
+
     public bool HasOldPrice => HasRecentDrop && Hit.OldPrice is not null;
 
     public string OldPriceText => Format.Price(Hit.OldPrice, Hit.Currency);

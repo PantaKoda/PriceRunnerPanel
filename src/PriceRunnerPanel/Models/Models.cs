@@ -17,6 +17,14 @@ public sealed record SearchHit(
     int StoreCount,
     bool OutOfStock);
 
+/// <summary>What to list from PriceRunner's deals: any of each kind ticked, and a discount range in percent.</summary>
+public sealed record DealFilter(
+    IReadOnlyCollection<int> Categories,
+    IReadOnlyCollection<int> Merchants,
+    IReadOnlyCollection<int> Brands,
+    int MinDropPercent,
+    int MaxDropPercent);
+
 /// <summary>One page of PriceRunner's deals. <see cref="Total"/> is capped by PriceRunner at 10 000.</summary>
 public sealed record DealsPage(int Total, IReadOnlyList<SearchHit> Hits);
 
@@ -97,6 +105,14 @@ public sealed class PinnedProduct
     public List<MarketPoint> MarketHistory { get; set; } = [];
 
     public DateTimeOffset? MarketHistoryFetched { get; set; }
+
+    /// <summary>The drop PriceRunner itself reports for the product now, in percent; null when it reports none.</summary>
+    public decimal? ReportedDropPercent { get; set; }
+
+    /// <summary>The earlier price PriceRunner measures that drop from.</summary>
+    public decimal? ReportedOldPrice { get; set; }
+
+    public DateTimeOffset? ReportedDropFetched { get; set; }
 }
 
 public sealed class AppSettings

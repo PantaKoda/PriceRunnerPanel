@@ -12,6 +12,19 @@ public enum DealFilterKind
     Brand,
 }
 
+/// <summary>A quick discount choice on the Black Friday tab, e.g. "30 %+".</summary>
+public sealed partial class DealDropPreset(DealsViewModel owner, int percent) : ObservableObject
+{
+    public string Label => $"{percent} %+";
+
+    public bool IsActive => owner.DropRange == (percent, 90);
+
+    public void Refresh() => OnPropertyChanged(nameof(IsActive));
+
+    [RelayCommand]
+    private void Apply() => owner.ApplyDropPreset(percent);
+}
+
 /// <summary>A row of the refine box on the Black Friday tab.</summary>
 public sealed record DealRefineRow(string Title, DealFilterViewModel Filter);
 

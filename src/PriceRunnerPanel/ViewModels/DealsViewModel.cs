@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
+using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using PriceRunnerPanel.Models;
 using PriceRunnerPanel.Services;
 
 namespace PriceRunnerPanel.ViewModels;
@@ -16,15 +18,20 @@ public sealed partial class DealsViewModel : ObservableObject, IDisposable
     /// <summary>Deals change through the day: reopening the tab after this long fetches them again.</summary>
     private static readonly TimeSpan Stale = TimeSpan.FromMinutes(30);
 
-    /// <summary>Pause between products when fetching store prices, to stay a polite client.</summary>
-    private static readonly TimeSpan BetweenStorePrices = TimeSpan.FromMilliseconds(300);
+    /// <summary>Pause between requests when filling in listings, to stay a polite client.</summary>
+    private static readonly TimeSpan BetweenDetails = TimeSpan.FromMilliseconds(300);
+
+    /// <summary>PriceRunner's deals start at a 10 % drop, and its ranges go up to 90 %.</summary>
+    private const int DefaultMinDrop = 10;
+    private const int MaxDropLimit = 90;
 
     private readonly MainViewModel _owner;
     private readonly PriceRunnerClient _client;
-    private readonly Queue<(SearchResultViewModel Row, IReadOnlyList<DealFilterOptionViewModel> Picked)> _storePricesPending = new();
+    private readonly Queue<(SearchResultViewModel Row, IReadOnlyList<DealFilterOptionViewModel> Picked)> _detailsPending = new();
     private CancellationTokenSource? _cts;
-    private CancellationTokenSource? _storePricesWorker;
+    private CancellationTokenSource? _detailsWorker;
     private DateTimeOffset? _loadedAt;
+    private bool _settingDrop;
     private int _offset;
     private int _total;
 
@@ -35,6 +42,7 @@ public sealed partial class DealsViewModel : ObservableObject, IDisposable
         CategoryFilter.SelectionChanged += (_, _) => OnFiltersChanged();
         MerchantFilter.SelectionChanged += (_, _) => OnFiltersChanged();
         BrandFilter.SelectionChanged += (_, _) => OnFiltersChanged();
+        DropPresets = [new(this, 10), new(this, 20), new(this, 30), new(this, 50)];
     }
 
     public DealFilterViewModel CategoryFilter { get; } = new("Category", "Find a category", DealFilterKind.Category);
@@ -52,6 +60,26 @@ public sealed partial class DealsViewModel : ObservableObject, IDisposable
 
     public ObservableCollection<SearchResultViewModel> Items { get; } = [];
 
+    /// <summary>The discount range as typed, in percent.</summary>
+    [ObservableProperty]
+    public partial string MinDropText { get; set; } = DefaultMinDrop.ToString(CultureInfo.InvariantCulture);
+
+    [ObservableProperty]
+    public partial string MaxDropText { get; set; } = MaxDropLimit.ToString(CultureInfo.InvariantCulture);
+
+    public IReadOnlyList<DealDropPreset> DropPresets { get; }
+
+    /// <summary>The range to ask for: anything unreadable counts as its default, and a reversed range is turned around.</summary>
+    public (int Min, int Max) DropRange
+    {
+        get
+        {
+            var min = ReadPercent(MinDropText, DefaultMinDrop);
+            var max = ReadPercent(MaxDropText, MaxDropLimit);
+            return min <= max ? (min, max) : (max, min);
+        }
+    }
+
     [ObservableProperty]
     public partial bool IsLoading { get; set; }
 
@@ -60,7 +88,7 @@ public sealed partial class DealsViewModel : ObservableObject, IDisposable
 
     public bool CanLoadMore => !IsLoading && Items.Count > 0 && Items.Count < _total;
 
-    public bool HasFilters => CategoryFilter.HasSelection || MerchantFilter.HasSelection || BrandFilter.HasSelection;
+    public bool HasFilters => CategoryFilter.HasSelection || MerchantFilter.HasSelection || BrandFilter.HasSelection || DropRange != (DefaultMinDrop, MaxDropLimit);
 
     /// <summary>The tab was opened: fetches the deals the first time, and again when they have gone stale.</summary>
     public void OnOpened()
@@ -86,6 +114,7 @@ public sealed partial class DealsViewModel : ObservableObject, IDisposable
         CategoryFilter.ClearSilently();
         MerchantFilter.ClearSilently();
         BrandFilter.ClearSilently();
+        SetDropRange(DefaultMinDrop, MaxDropLimit);
         UpdateActiveFilters();
         return ReloadAsync(debounce: false);
     }
@@ -103,7 +132,7 @@ public sealed partial class DealsViewModel : ObservableObject, IDisposable
         try
         {
             var offset = _offset + PriceRunnerClient.DealsPageSize;
-            var page = await _client.GetDealsAsync(CategoryFilter.SelectedIds, MerchantFilter.SelectedIds, BrandFilter.SelectedIds, offset, cts.Token);
+            var page = await _client.GetDealsAsync(CurrentFilter(), offset, cts.Token);
             if (cts.IsCancellationRequested)
             {
                 return;
@@ -132,6 +161,43 @@ public sealed partial class DealsViewModel : ObservableObject, IDisposable
         }
     }
 
+    internal void ApplyDropPreset(int min)
+    {
+        SetDropRange(min, MaxDropLimit);
+        OnFiltersChanged();
+    }
+
+    partial void OnMinDropTextChanged(string value) => OnDropTyped();
+
+    partial void OnMaxDropTextChanged(string value) => OnDropTyped();
+
+    private void OnDropTyped()
+    {
+        if (!_settingDrop)
+        {
+            OnFiltersChanged();
+        }
+    }
+
+    private void SetDropRange(int min, int max)
+    {
+        _settingDrop = true;
+        MinDropText = min.ToString(CultureInfo.InvariantCulture);
+        MaxDropText = max.ToString(CultureInfo.InvariantCulture);
+        _settingDrop = false;
+    }
+
+    private static int ReadPercent(string text, int fallback) =>
+        int.TryParse(text.Replace("%", "", StringComparison.Ordinal).Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out var percent)
+            ? Math.Clamp(percent, 1, MaxDropLimit)
+            : fallback;
+
+    private DealFilter CurrentFilter()
+    {
+        var (min, max) = DropRange;
+        return new DealFilter(CategoryFilter.SelectedIds, MerchantFilter.SelectedIds, BrandFilter.SelectedIds, min, max);
+    }
+
     private void OnFiltersChanged()
     {
         UpdateActiveFilters();
@@ -143,7 +209,7 @@ public sealed partial class DealsViewModel : ObservableObject, IDisposable
         _cts?.Cancel();
         _cts?.Dispose();
         var cts = _cts = new CancellationTokenSource();
-        _storePricesPending.Clear();
+        _detailsPending.Clear();
         try
         {
             IsLoading = true;
@@ -154,11 +220,9 @@ public sealed partial class DealsViewModel : ObservableObject, IDisposable
             }
 
             Status = "Fetching deals…";
-            var categories = CategoryFilter.SelectedIds;
-            var merchants = MerchantFilter.SelectedIds;
-            var brands = BrandFilter.SelectedIds;
-            var pageTask = _client.GetDealsAsync(categories, merchants, brands, 0, cts.Token);
-            var facetsTask = _client.GetDealFacetsAsync(categories, merchants, brands, cts.Token);
+            var filter = CurrentFilter();
+            var pageTask = _client.GetDealsAsync(filter, 0, cts.Token);
+            var facetsTask = _client.GetDealFacetsAsync(filter, cts.Token);
             await Task.WhenAll(pageTask, facetsTask);
             if (cts.IsCancellationRequested)
             {
@@ -201,7 +265,7 @@ public sealed partial class DealsViewModel : ObservableObject, IDisposable
         }
     }
 
-    private void Append(IEnumerable<Models.SearchHit> hits)
+    private void Append(IEnumerable<SearchHit> hits)
     {
         var shown = Items.Select(r => r.Hit.Id).ToHashSet();
         var picked = MerchantFilter.Selected;
@@ -212,41 +276,58 @@ public sealed partial class DealsViewModel : ObservableObject, IDisposable
             if (picked.Count > 0)
             {
                 row.DealStoreText = $"At {string.Join(", ", picked.Select(o => o.Name))}…";
-                _storePricesPending.Enqueue((row, picked));
+            }
+
+            if (HasFilters)
+            {
+                _detailsPending.Enqueue((row, picked));
             }
         }
 
-        if (_storePricesPending.Count > 0 && _cts is { } cts && _storePricesWorker != cts)
+        if (_detailsPending.Count > 0 && _cts is { } cts && _detailsWorker != cts)
         {
-            _ = LoadStorePricesAsync(cts);
+            _ = LoadDetailsAsync(cts);
         }
     }
 
     /// <summary>
-    /// A store filter finds products that store sells, but the listed price is the lowest at any store: Elgiganten can
-    /// sell at 5 879 kr what another store sells at 3 999 kr. So each listing asks for the picked stores' own prices,
-    /// one product at a time with a pause, and only while a store filter is on.
+    /// Fills in what the deals list doesn't carry, only while a filter narrows the list: each product's past year for
+    /// the verdict, and with stores picked, what they ask, which also tells which of several has the listed price.
+    /// One product at a time with a pause, top of the list first.
     /// </summary>
-    private async Task LoadStorePricesAsync(CancellationTokenSource cts)
+    private async Task LoadDetailsAsync(CancellationTokenSource cts)
     {
-        _storePricesWorker = cts;
+        _detailsWorker = cts;
         try
         {
-            while (!cts.IsCancellationRequested && _storePricesPending.TryDequeue(out var next))
+            while (!cts.IsCancellationRequested && _detailsPending.TryDequeue(out var next))
             {
                 var (row, picked) = next;
+                if (picked.Count > 0)
+                {
+                    try
+                    {
+                        row.ShowStorePrice(picked, await _client.GetStorePricesAsync(row.Hit.Id, cts.Token));
+                    }
+                    catch (Exception ex) when (IsFetchFailure(ex) && !cts.IsCancellationRequested)
+                    {
+                        row.DealStoreText = $"At {string.Join(", ", picked.Select(o => o.Name))}";
+                        row.DealStoreTip = "Couldn't fetch this store's own price";
+                    }
+
+                    await Task.Delay(BetweenDetails, cts.Token);
+                }
+
                 try
                 {
-                    var prices = await _client.GetStorePricesAsync(row.Hit.Id, cts.Token);
-                    row.ShowStorePrice(picked, prices);
+                    row.ShowInsight(await _client.GetPriceHistoryAsync(row.Hit.Id, cts.Token));
                 }
                 catch (Exception ex) when (IsFetchFailure(ex) && !cts.IsCancellationRequested)
                 {
-                    row.DealStoreText = $"At {string.Join(", ", picked.Select(o => o.Name))}";
-                    row.DealStoreTip = "Couldn't fetch this store's own price";
+                    // No verdict for this listing; pinning it tries again.
                 }
 
-                await Task.Delay(BetweenStorePrices, cts.Token);
+                await Task.Delay(BetweenDetails, cts.Token);
             }
         }
         catch (OperationCanceledException) when (cts.IsCancellationRequested)
@@ -255,9 +336,9 @@ public sealed partial class DealsViewModel : ObservableObject, IDisposable
         }
         finally
         {
-            if (_storePricesWorker == cts)
+            if (_detailsWorker == cts)
             {
-                _storePricesWorker = null;
+                _detailsWorker = null;
             }
         }
     }
@@ -271,13 +352,17 @@ public sealed partial class DealsViewModel : ObservableObject, IDisposable
         }
 
         OnPropertyChanged(nameof(HasFilters));
+        foreach (var preset in DropPresets)
+        {
+            preset.Refresh();
+        }
     }
 
     private void ShowCount()
     {
         Status = _total == 0
             ? "No deals match these filters"
-            : $"{(_total >= 10000 ? "10 000+" : Format.Count(_total))} deals  ·  pin one to see if the discount is real";
+            : $"{(_total >= 10000 ? "10 000+" : Format.Count(_total))} deals  ·  pin one to track its price";
     }
 
     private static bool IsFetchFailure(Exception ex) =>

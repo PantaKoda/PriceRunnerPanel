@@ -39,6 +39,12 @@
             </StackPanel>
             <TextBlock Classes="secondary" Text="{Binding Detail}" />
             <TextBlock Classes="secondary" Text="{Binding Description}" Opacity="0.85" />
+            <!-- While a filter is on: this price against the product's past year, next to PriceRunner's own drop on the right. -->
+            <Border Classes="chip" Classes.down="{Binding IsGoodDeal}" Classes.warn="{Binding IsInflated}" Classes.up="{Binding IsOverpriced}"
+                    HorizontalAlignment="Left" Margin="0,2,0,0" IsVisible="{Binding HasVerdict}" ToolTip.Tip="{Binding VerdictTip}">
+              <TextBlock Text="{Binding VerdictText}" />
+            </Border>
+            <TextBlock Classes="secondary" Text="{Binding InsightText}" IsVisible="{Binding HasInsight}" ToolTip.Tip="{Binding InsightText}" />
           </StackPanel>
           <StackPanel Grid.Column="2" Spacing="5" VerticalAlignment="Center" MinWidth="92">
             <TextBlock Classes="price" Text="{Binding PriceText}" />
@@ -134,6 +140,10 @@
                 <Border Classes="chip" Classes.down="{Binding IsGoodDeal}" Classes.warn="{Binding IsInflated}" Classes.up="{Binding IsOverpriced}"
                         IsVisible="{Binding HasVerdict}" ToolTip.Tip="{Binding VerdictTip}">
                   <TextBlock Text="{Binding VerdictText}" />
+                </Border>
+                <!-- What PriceRunner reports, whatever our verdict says: often the discount you'd actually get today. -->
+                <Border Classes="chip" IsVisible="{Binding HasReportedDrop}" ToolTip.Tip="{Binding ReportedDropTip}">
+                  <TextBlock Text="{Binding ReportedDropText}" />
                 </Border>
                 <Border Classes="chip solid" IsVisible="{Binding IsAtLowest}" ToolTip.Tip="The lowest price seen (over the past year when PriceRunner has the history)">
                   <TextBlock Text="{Binding LowestChipText}" />
@@ -333,6 +343,30 @@
                 <PathIcon Data="{StaticResource IconRefresh}" />
               </Button>
             </Grid>
+            <!-- The discount PriceRunner reports: a range to type, or a quick choice. -->
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="5" Margin="16,0,14,6">
+              <TextBlock Classes="hud" Text="DISCOUNT" VerticalAlignment="Center" Margin="0,0,3,0" />
+              <TextBox Classes="target" Text="{Binding Deals.MinDropText}" Width="44" MinWidth="44" TextAlignment="Center"
+                       ToolTip.Tip="Lowest discount, in percent" AutomationProperties.Name="Lowest discount" />
+              <TextBlock Classes="secondary" Text="–" VerticalAlignment="Center" />
+              <TextBox Classes="target" Text="{Binding Deals.MaxDropText}" Width="44" MinWidth="44" TextAlignment="Center"
+                       ToolTip.Tip="Highest discount, in percent (up to 90)" AutomationProperties.Name="Highest discount" />
+              <TextBlock Classes="secondary" Text="%" VerticalAlignment="Center" Margin="0,0,5,0" />
+              <ItemsControl ItemsSource="{Binding Deals.DropPresets}" VerticalAlignment="Center">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <StackPanel Orientation="Horizontal" Spacing="3" />
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:DealDropPreset">
+                    <Button Classes="dropPreset" Classes.active="{Binding IsActive}" Command="{Binding ApplyCommand}" Content="{Binding Label}"
+                            AutomationProperties.Name="{Binding Label}" />
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+
             <!-- What's picked, each with a cross to remove it. -->
             <ItemsControl DockPanel.Dock="Top" ItemsSource="{Binding Deals.ActiveFilters}" IsVisible="{Binding Deals.HasFilters}" Margin="14,0,14,6">
               <ItemsControl.ItemsPanel>

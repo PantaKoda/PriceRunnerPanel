@@ -23,7 +23,8 @@ public sealed partial class PinnedItemViewModel : ObservableObject
         nameof(PinnedText), nameof(LowText), nameof(HighText), nameof(IsAtLowest), nameof(IsBelowTarget), nameof(StoreText),
         nameof(CheckedText), nameof(HasError), nameof(ErrorText), nameof(History), nameof(DealPosition), nameof(HasStoreLink),
         nameof(TargetHint), nameof(LowestChipText), nameof(Verdict), nameof(HasVerdict), nameof(VerdictText), nameof(VerdictTip),
-        nameof(IsGoodDeal), nameof(IsInflated), nameof(IsOverpriced), nameof(InsightText), nameof(HasInsight),
+        nameof(IsGoodDeal), nameof(IsInflated), nameof(IsOverpriced), nameof(InsightText), nameof(HasInsight), nameof(HasReportedDrop),
+        nameof(ReportedDropText), nameof(ReportedDropTip),
     ];
 
     /// <summary>Days of PriceRunner's history the sparkline shows.</summary>
@@ -97,67 +98,28 @@ public sealed partial class PinnedItemViewModel : ObservableObject
 
     public DealVerdict Verdict => _insight.Verdict;
 
-    public bool HasVerdict => Verdict != DealVerdict.Unknown;
+    public bool HasVerdict => _insight.HasVerdict;
 
-    public string VerdictText => Verdict switch
-    {
-        DealVerdict.Deal => "✓ REAL DEAL",
-        DealVerdict.Good => "GOOD PRICE",
-        DealVerdict.Typical => "TYPICAL PRICE",
-        DealVerdict.Inflated => "⚠ INFLATED DROP",
-        DealVerdict.High => "ABOVE TYPICAL",
-        _ => "",
-    };
+    public string VerdictText => _insight.Label;
 
-    public bool IsGoodDeal => Verdict is DealVerdict.Deal or DealVerdict.Good;
+    public bool IsGoodDeal => _insight.IsGoodDeal;
 
-    public bool IsInflated => Verdict == DealVerdict.Inflated;
+    public bool IsInflated => _insight.IsInflated;
 
-    public bool IsOverpriced => Verdict == DealVerdict.High;
+    public bool IsOverpriced => _insight.IsOverpriced;
 
-    public string VerdictTip
-    {
-        get
-        {
-            if (_insight.Typical is not { } typical || _insight.VsTypicalPercent is not { } vs)
-            {
-                return "";
-            }
+    public string VerdictTip => _insight.Explain(Product.Currency);
 
-            var meaning = Verdict switch
-            {
-                DealVerdict.Deal => "Clearly below what it usually costs, at or near its lowest price of the year.",
-                DealVerdict.Good => "Below what it usually costs.",
-                DealVerdict.Inflated => $"The price was raised to {Format.Price(_insight.RecentPeak?.Price, Product.Currency)} in the last month and is "
-                    + "coming down again, but it is not cheaper than before the rise. A discount from an inflated price.",
-                DealVerdict.High => "More than it usually costs.",
-                _ => "About what it usually costs.",
-            };
-            return $"{meaning}\n\nTypical price {Format.Price(typical, Product.Currency)} (median of the daily lowest price 3–11 weeks ago), "
-                + $"today {Signed(vs)}.";
-        }
-    }
+    public string InsightText => _insight.Summary(Product.Currency);
 
-    /// <summary>"Typical 4 490 kr · 1y low 3 069 kr (CDON, 27 Aug)".</summary>
-    public string InsightText
-    {
-        get
-        {
-            var parts = new List<string>();
-            if (_insight.Typical is { } typical)
-            {
-                parts.Add($"Typical {Format.Price(typical, Product.Currency)}");
-            }
+    /// <summary>The drop PriceRunner itself reports, shown next to our own verdict: both can be true at once.</summary>
+    public bool HasReportedDrop => Product.ReportedDropPercent is > 0.5m;
 
-            if (_insight.YearLow is { } low)
-            {
-                var where = low.Merchant is { Length: > 0 } merchant ? $"{merchant}, " : "";
-                parts.Add($"1y low {Format.Price(low.Price, Product.Currency)} ({where}{low.Day.ToString("d MMM", CultureInfo.InvariantCulture)})");
-            }
+    public string ReportedDropText => Product.ReportedDropPercent is { } percent ? $"PRICERUNNER −{Format.Percent(percent)}" : "";
 
-            return string.Join("  ·  ", parts);
-        }
-    }
+    public string ReportedDropTip => Product.ReportedOldPrice is { } old
+        ? $"PriceRunner reports this drop, from an earlier price of {Format.Price(old, Product.Currency)}"
+        : "The drop PriceRunner reports";
 
     public bool HasInsight => HasYear;
 
@@ -263,8 +225,6 @@ public sealed partial class PinnedItemViewModel : ObservableObject
     private static decimal? Min(decimal? a, decimal? b) => a is { } x && b is { } y ? Math.Min(x, y) : a ?? b;
 
     private static decimal? Max(decimal? a, decimal? b) => a is { } x && b is { } y ? Math.Max(x, y) : a ?? b;
-
-    private static string Signed(decimal percent) => percent < 0 ? $"−{Format.Percent(-percent)}" : $"+{Format.Percent(percent)}";
 
     [RelayCommand]
     private Task SaveTargetAsync() => _owner.SaveTargetAsync(this);

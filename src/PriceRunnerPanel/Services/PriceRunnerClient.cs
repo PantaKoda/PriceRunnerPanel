@@ -77,9 +77,9 @@ public sealed class PriceRunnerClient : IDisposable
     /// Current deals: products at least 10 % below their earlier price, newest drops first. This is the list on
     /// pricerunner.se/c/black-friday, which shows PriceRunner's deals all year round.
     /// </summary>
-    public async Task<DealsPage> GetDealsAsync(IReadOnlyCollection<int> categories, IReadOnlyCollection<int> merchants, IReadOnlyCollection<int> brands, int offset, CancellationToken cancellationToken)
+    public async Task<DealsPage> GetDealsAsync(DealFilter filter, int offset, CancellationToken cancellationToken)
     {
-        var url = $"/se/api/deals-edge-rest/public/search/deals/products/v3/{Market}?{DealFilters(categories, merchants, brands)}"
+        var url = $"/se/api/deals-edge-rest/public/search/deals/products/v3/{Market}?{DealFilters(filter)}"
             + $"&sorting=LATESTPRICEDROP_DESC,GLOBALRANK_ASC&size={DealsPageSize}&offset={offset}";
         using var document = await GetJsonAsync(url, cancellationToken).ConfigureAwait(false);
         var root = document.RootElement;
@@ -91,9 +91,9 @@ public sealed class PriceRunnerClient : IDisposable
     /// The filter choices for the deals. PriceRunner narrows each filter by the others' selections (the stores
     /// that have deals in the chosen categories), and lists the popular choices separately from the rest.
     /// </summary>
-    public async Task<DealFacets> GetDealFacetsAsync(IReadOnlyCollection<int> categories, IReadOnlyCollection<int> merchants, IReadOnlyCollection<int> brands, CancellationToken cancellationToken)
+    public async Task<DealFacets> GetDealFacetsAsync(DealFilter filter, CancellationToken cancellationToken)
     {
-        var url = $"/se/api/deals-edge-rest/public/search/deals/facets/{Market}?{DealFilters(categories, merchants, brands)}&size={DealsPageSize}";
+        var url = $"/se/api/deals-edge-rest/public/search/deals/facets/{Market}?{DealFilters(filter)}&size={DealsPageSize}";
         using var document = await GetJsonAsync(url, cancellationToken).ConfigureAwait(false);
         var facets = Obj(document.RootElement, "facets");
         return new DealFacets(ParseFacet(Obj(facets, "CATEGORY")), ParseFacet(Obj(facets, "MERCHANT_DEAL")), ParseFacet(Obj(facets, "BRAND")));
@@ -108,7 +108,7 @@ public sealed class PriceRunnerClient : IDisposable
         {
             foreach (var offer in offers.EnumerateArray())
             {
-                if (Money(offer, "price") is not { } price || !int.TryParse(Str(offer, "merchantId"), out var store))
+                if (OfferPrice(offer) is not { } price || !int.TryParse(Str(offer, "merchantId"), out var store))
                 {
                     continue;
                 }
@@ -151,7 +151,7 @@ public sealed class PriceRunnerClient : IDisposable
         {
             foreach (var offer in offers.EnumerateArray())
             {
-                if (Money(offer, "price") is not { } price)
+                if (OfferPrice(offer) is not { } price)
                 {
                     continue;
                 }
@@ -261,26 +261,51 @@ public sealed class PriceRunnerClient : IDisposable
 
     public void Dispose() => _http.Dispose();
 
+    /// <summary>
+    /// What an offer costs now. During a store's sale "price" stays the regular price and the sale price sits in
+    /// "campaignPrice", valid between two dates; that's what PriceRunner lists. A price only for a store's members
+    /// isn't for everyone, so it doesn't count.
+    /// </summary>
+    private static (decimal Amount, string Currency)? OfferPrice(JsonElement offer)
+    {
+        var campaign = Obj(offer, "campaignPrice");
+        return Money(campaign, "price") is { } sale
+            && Obj(offer, "campaignMembership").ValueKind != JsonValueKind.Object
+            && IsCurrent(Obj(campaign, "salePriceEffectiveDate"))
+            ? sale
+            : Money(offer, "price");
+    }
+
+    private static bool IsCurrent(JsonElement period)
+    {
+        var now = DateTimeOffset.UtcNow;
+        return !(TryDate(period, "start") > now) && !(TryDate(period, "end") < now);
+    }
+
+    private static DateTimeOffset? TryDate(JsonElement element, string name) =>
+        DateTimeOffset.TryParse(Str(element, name), CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var date) ? date : null;
+
     private static string OffersUrl(string productId) =>
         $"/se/api/product-detail-edge-rest/public/product-detail/v0/offers/{Market}/{Uri.EscapeDataString(productId)}"
         + "?af_ORIGIN=NATIONAL&af_ITEM_CONDITION=NEW,UNKNOWN&af_STOCK_STATUS=IN_STOCK,BACKORDER,PREORDER,SPECIAL_ORDER,COLLECT_IN_STORE,UNKNOWN";
 
-    private static string DealFilters(IReadOnlyCollection<int> categories, IReadOnlyCollection<int> merchants, IReadOnlyCollection<int> brands)
+    private static string DealFilters(DealFilter filter)
     {
-        var filters = "af_PRICE_DROP=-90_-10";
-        if (categories.Count > 0)
+        // PriceRunner writes a range of drops as negative percentages, largest drop first: 30-50 % is -50_-30.
+        var filters = $"af_PRICE_DROP=-{filter.MaxDropPercent}_-{filter.MinDropPercent}";
+        if (filter.Categories.Count > 0)
         {
-            filters += $"&af_CATEGORY={string.Join(',', categories)}";
+            filters += $"&af_CATEGORY={string.Join(',', filter.Categories)}";
         }
 
-        if (merchants.Count > 0)
+        if (filter.Merchants.Count > 0)
         {
-            filters += $"&af_MERCHANT_DEAL={string.Join(',', merchants)}";
+            filters += $"&af_MERCHANT_DEAL={string.Join(',', filter.Merchants)}";
         }
 
-        if (brands.Count > 0)
+        if (filter.Brands.Count > 0)
         {
-            filters += $"&af_BRAND={string.Join(',', brands)}";
+            filters += $"&af_BRAND={string.Join(',', filter.Brands)}";
         }
 
         return filters;

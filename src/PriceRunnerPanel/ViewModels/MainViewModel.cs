@@ -335,6 +335,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             LowestSeen = hit.LowestPrice,
             HighestSeen = hit.LowestPrice,
             LowestSeenAt = now,
+            ReportedDropPercent = hit.RecentDropPercent,
+            ReportedOldPrice = hit.OldPrice,
+            ReportedDropFetched = now,
         };
         if (hit.LowestPrice is { } price)
         {

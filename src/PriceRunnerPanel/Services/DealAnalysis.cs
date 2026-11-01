@@ -1,3 +1,4 @@
+using System.Globalization;
 using PriceRunnerPanel.Models;
 
 namespace PriceRunnerPanel.Services;
@@ -36,6 +37,63 @@ public sealed record DealInsight(
     MarketPoint? RecentPeak)
 {
     public static readonly DealInsight None = new(DealVerdict.Unknown, null, null, null, null, null);
+
+    public bool HasVerdict => Verdict != DealVerdict.Unknown;
+
+    public bool IsGoodDeal => Verdict is DealVerdict.Deal or DealVerdict.Good;
+
+    public bool IsInflated => Verdict == DealVerdict.Inflated;
+
+    public bool IsOverpriced => Verdict == DealVerdict.High;
+
+    public string Label => Verdict switch
+    {
+        DealVerdict.Deal => "✓ REAL DEAL",
+        DealVerdict.Good => "GOOD PRICE",
+        DealVerdict.Typical => "TYPICAL PRICE",
+        DealVerdict.Inflated => "⚠ INFLATED DROP",
+        DealVerdict.High => "ABOVE TYPICAL",
+        _ => "",
+    };
+
+    /// <summary>Why the verdict is what it is, for a tooltip.</summary>
+    public string Explain(string currency)
+    {
+        if (Typical is not { } typical || VsTypicalPercent is not { } vs)
+        {
+            return "";
+        }
+
+        var meaning = Verdict switch
+        {
+            DealVerdict.Deal => "Clearly below what it usually costs, at or near its lowest price of the year.",
+            DealVerdict.Good => "Below what it usually costs.",
+            DealVerdict.Inflated => $"The price was raised to {Format.Price(RecentPeak?.Price, currency)} in the last month and is "
+                + "coming down again, but it is not cheaper than before the rise. A discount from an inflated price.",
+            DealVerdict.High => "More than it usually costs.",
+            _ => "About what it usually costs.",
+        };
+        var signed = vs < 0 ? $"−{Format.Percent(-vs)}" : $"+{Format.Percent(vs)}";
+        return $"{meaning}\n\nTypical price {Format.Price(typical, currency)} (median of the daily lowest price 3–11 weeks ago), today {signed}.";
+    }
+
+    /// <summary>"Typical 4 490 kr · 1y low 3 069 kr (CDON, 27 Aug)".</summary>
+    public string Summary(string currency)
+    {
+        var parts = new List<string>();
+        if (Typical is { } typical)
+        {
+            parts.Add($"Typical {Format.Price(typical, currency)}");
+        }
+
+        if (YearLow is { } low)
+        {
+            var where = low.Merchant is { Length: > 0 } merchant ? $"{merchant}, " : "";
+            parts.Add($"1y low {Format.Price(low.Price, currency)} ({where}{low.Day.ToString("d MMM", CultureInfo.InvariantCulture)})");
+        }
+
+        return string.Join("  ·  ", parts);
+    }
 }
 
 /// <summary>
