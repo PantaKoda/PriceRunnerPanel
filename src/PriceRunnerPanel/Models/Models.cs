@@ -31,6 +31,9 @@ public sealed record PriceSnapshot(
 
 public sealed record PricePoint(DateTimeOffset At, decimal Price);
 
+/// <summary>PriceRunner's lowest price on one day (Swedish stores), and the store that had it.</summary>
+public sealed record MarketPoint(DateOnly Day, decimal Price, string? Merchant);
+
 /// <summary>
 /// PriceRunner's grouping of one product's variants (usually colours): a stable key, the shared base name and each
 /// member's variant label by product id.
@@ -76,6 +79,14 @@ public sealed class PinnedProduct
 
     /// <summary>One point per observed price change (plus the first observation).</summary>
     public List<PricePoint> History { get; set; } = [];
+
+    /// <summary>
+    /// PriceRunner's own daily lowest price for the past year, including the time before the pin. It shows what the
+    /// product usually costs, so a "discount" that only undoes a recent price hike can be told from a real one.
+    /// </summary>
+    public List<MarketPoint> MarketHistory { get; set; } = [];
+
+    public DateTimeOffset? MarketHistoryFetched { get; set; }
 }
 
 public sealed class AppSettings

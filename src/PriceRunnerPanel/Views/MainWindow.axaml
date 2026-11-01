@@ -36,12 +36,19 @@
                 <TextBlock Classes="title" Text="{Binding Name}" />
               </Button>
               <TextBlock Classes="secondary" Text="{Binding StoreText}" />
+              <TextBlock Classes="secondary" Text="{Binding InsightText}" IsVisible="{Binding HasInsight}"
+                         ToolTip.Tip="{Binding InsightText, StringFormat='{}{0}&#10;From PriceRunner’s price history of the past year'}" />
               <WrapPanel Orientation="Horizontal" ItemSpacing="4" LineSpacing="4">
                 <Border Classes="chip variant" IsVisible="{Binding HasVariant}" ToolTip.Tip="{Binding VariantLabel}">
                   <TextBlock Text="{Binding VariantLabel, StringFormat='● {0}'}" MaxWidth="200" TextTrimming="CharacterEllipsis" />
                 </Border>
-                <Border Classes="chip solid" IsVisible="{Binding IsAtLowest}" ToolTip.Tip="The lowest price seen since you pinned it">
-                  <TextBlock Text="LOWEST SEEN" />
+                <!-- Today's price against what it usually cost: catches discounts from a recently raised price. -->
+                <Border Classes="chip" Classes.down="{Binding IsGoodDeal}" Classes.warn="{Binding IsInflated}" Classes.up="{Binding IsOverpriced}"
+                        IsVisible="{Binding HasVerdict}" ToolTip.Tip="{Binding VerdictTip}">
+                  <TextBlock Text="{Binding VerdictText}" />
+                </Border>
+                <Border Classes="chip solid" IsVisible="{Binding IsAtLowest}" ToolTip.Tip="The lowest price seen (over the past year when PriceRunner has the history)">
+                  <TextBlock Text="{Binding LowestChipText}" />
                 </Border>
                 <Border Classes="chip target" IsVisible="{Binding IsBelowTarget}">
                   <TextBlock Text="🎯 TARGET HIT" />
@@ -64,7 +71,7 @@
           <Grid Grid.Row="3" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" Margin="0,2,0,8">
             <TextBlock Classes="secondary" Text="{Binding LowText}" Foreground="{DynamicResource DownBrush}" VerticalAlignment="Center" />
             <c:DealMeter Grid.Column="1" Height="12" Position="{Binding DealPosition}" MarkerBrush="{DynamicResource HudAccentBrush}"
-                         ToolTip.Tip="Where today's price sits between the lowest and highest seen" />
+                         ToolTip.Tip="Where today's price sits between the lowest and highest of the past year" />
             <TextBlock Grid.Column="2" Classes="secondary" Text="{Binding HighText}" Foreground="{DynamicResource UpBrush}" VerticalAlignment="Center" />
           </Grid>
 

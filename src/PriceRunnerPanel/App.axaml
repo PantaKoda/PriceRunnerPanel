@@ -32,6 +32,8 @@
       <SolidColorBrush x:Key="DownSoftBrush" Color="#160B9463" />
       <SolidColorBrush x:Key="UpBrush" Color="#CC2D4F" />
       <SolidColorBrush x:Key="UpSoftBrush" Color="#14CC2D4F" />
+      <SolidColorBrush x:Key="WarnBrush" Color="#B86200" />
+      <SolidColorBrush x:Key="WarnSoftBrush" Color="#18E07A00" />
       <SolidColorBrush x:Key="TargetBrush" Color="#7A4DE0" />
       <SolidColorBrush x:Key="TargetSoftBrush" Color="#167A4DE0" />
       <BoxShadows x:Key="PanelShadow">0 6 24 0 #2A0A3A6A</BoxShadows>
@@ -199,6 +201,13 @@
     </Style>
     <Style Selector="Border.chip.up TextBlock">
       <Setter Property="Foreground" Value="{DynamicResource UpBrush}" />
+    </Style>
+    <Style Selector="Border.chip.warn">
+      <Setter Property="BorderBrush" Value="{DynamicResource WarnBrush}" />
+      <Setter Property="Background" Value="{DynamicResource WarnSoftBrush}" />
+    </Style>
+    <Style Selector="Border.chip.warn TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource WarnBrush}" />
     </Style>
     <Style Selector="Border.chip.target">
       <Setter Property="BorderBrush" Value="{DynamicResource TargetBrush}" />

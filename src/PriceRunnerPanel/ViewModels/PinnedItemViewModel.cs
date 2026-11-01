@@ -22,16 +22,22 @@ public sealed partial class PinnedItemViewModel : ObservableObject
         nameof(Name), nameof(CurrentPriceText), nameof(ChangeText), nameof(Trend), nameof(IsDown), nameof(IsUp), nameof(IsFlat),
         nameof(PinnedText), nameof(LowText), nameof(HighText), nameof(IsAtLowest), nameof(IsBelowTarget), nameof(StoreText),
         nameof(CheckedText), nameof(HasError), nameof(ErrorText), nameof(History), nameof(DealPosition), nameof(HasStoreLink),
-        nameof(TargetHint),
+        nameof(TargetHint), nameof(LowestChipText), nameof(Verdict), nameof(HasVerdict), nameof(VerdictText), nameof(VerdictTip),
+        nameof(IsGoodDeal), nameof(IsInflated), nameof(IsOverpriced), nameof(InsightText), nameof(HasInsight),
     ];
 
+    /// <summary>Days of PriceRunner's history the sparkline shows.</summary>
+    private const int SparklineDays = 90;
+
     private readonly MainViewModel _owner;
+    private DealInsight _insight = DealInsight.None;
 
     public PinnedItemViewModel(MainViewModel owner, PinnedProduct product)
     {
         _owner = owner;
         Product = product;
         TargetInput = product.TargetPrice is { } target ? target.ToString("0.##", CultureInfo.InvariantCulture) : "";
+        _insight = Analyze();
     }
 
     public PinnedProduct Product { get; }
@@ -70,12 +76,90 @@ public sealed partial class PinnedItemViewModel : ObservableObject
 
     public string PinnedText => $"Pinned {Format.Price(Product.PinnedPrice, Product.Currency)}";
 
-    public string LowText => $"Low {Format.Price(Product.LowestSeen, Product.Currency)}";
+    /// <summary>How today's price compares with the past year on PriceRunner.</summary>
+    public DealInsight Insight => _insight;
 
-    public string HighText => $"High {Format.Price(Product.HighestSeen, Product.Currency)}";
+    /// <summary>Lowest price: over PriceRunner's past year when we have it, else since pinning.</summary>
+    private decimal? Low => Min(_insight.YearLow?.Price, Product.LowestSeen);
 
-    /// <summary>The price sits at the lowest we have seen, and it has actually moved at some point.</summary>
-    public bool IsAtLowest => Product.CurrentPrice is { } now && Product.LowestSeen == now && Product.HighestSeen > now;
+    private decimal? High => Max(_insight.YearHigh?.Price, Product.HighestSeen);
+
+    private bool HasYear => _insight.YearLow is not null;
+
+    public string LowText => $"{(HasYear ? "1y low" : "Low")} {Format.Price(Low, Product.Currency)}";
+
+    public string HighText => $"{(HasYear ? "1y high" : "High")} {Format.Price(High, Product.Currency)}";
+
+    /// <summary>The price sits at the lowest seen (over the year when known), and it has actually moved at some point.</summary>
+    public bool IsAtLowest => Product.CurrentPrice is { } now && now <= Low && High > now;
+
+    public string LowestChipText => HasYear ? "1-YEAR LOW" : "LOWEST SEEN";
+
+    public DealVerdict Verdict => _insight.Verdict;
+
+    public bool HasVerdict => Verdict != DealVerdict.Unknown;
+
+    public string VerdictText => Verdict switch
+    {
+        DealVerdict.Deal => "✓ REAL DEAL",
+        DealVerdict.Good => "GOOD PRICE",
+        DealVerdict.Typical => "TYPICAL PRICE",
+        DealVerdict.Inflated => "⚠ INFLATED DROP",
+        DealVerdict.High => "ABOVE TYPICAL",
+        _ => "",
+    };
+
+    public bool IsGoodDeal => Verdict is DealVerdict.Deal or DealVerdict.Good;
+
+    public bool IsInflated => Verdict == DealVerdict.Inflated;
+
+    public bool IsOverpriced => Verdict == DealVerdict.High;
+
+    public string VerdictTip
+    {
+        get
+        {
+            if (_insight.Typical is not { } typical || _insight.VsTypicalPercent is not { } vs)
+            {
+                return "";
+            }
+
+            var meaning = Verdict switch
+            {
+                DealVerdict.Deal => "Clearly below what it usually costs, at or near its lowest price of the year.",
+                DealVerdict.Good => "Below what it usually costs.",
+                DealVerdict.Inflated => $"The price was raised to {Format.Price(_insight.RecentPeak?.Price, Product.Currency)} in the last month and is "
+                    + "coming down again, but it is not cheaper than before the rise. A discount from an inflated price.",
+                DealVerdict.High => "More than it usually costs.",
+                _ => "About what it usually costs.",
+            };
+            return $"{meaning}\n\nTypical price {Format.Price(typical, Product.Currency)} (median of the daily lowest price 3–11 weeks ago), "
+                + $"today {Signed(vs)}.";
+        }
+    }
+
+    /// <summary>"Typical 4 490 kr · 1y low 3 069 kr (CDON, 27 Aug)".</summary>
+    public string InsightText
+    {
+        get
+        {
+            var parts = new List<string>();
+            if (_insight.Typical is { } typical)
+            {
+                parts.Add($"Typical {Format.Price(typical, Product.Currency)}");
+            }
+
+            if (_insight.YearLow is { } low)
+            {
+                var where = low.Merchant is { Length: > 0 } merchant ? $"{merchant}, " : "";
+                parts.Add($"1y low {Format.Price(low.Price, Product.Currency)} ({where}{low.Day.ToString("d MMM", CultureInfo.InvariantCulture)})");
+            }
+
+            return string.Join("  ·  ", parts);
+        }
+    }
+
+    public bool HasInsight => HasYear;
 
     public bool IsBelowTarget => Product.TargetPrice is { } target && Product.CurrentPrice is { } now && now <= target;
 
@@ -91,9 +175,28 @@ public sealed partial class PinnedItemViewModel : ObservableObject
 
     public string ErrorText => Product.LastError ?? "";
 
-    public IReadOnlyList<double> History => [.. Product.History.Select(p => (double)p.Price)];
+    /// <summary>The last 90 days of PriceRunner's history and today's price; our own checks until that is fetched.</summary>
+    public IReadOnlyList<double> History
+    {
+        get
+        {
+            if (Product.MarketHistory.Count == 0)
+            {
+                return [.. Product.History.Select(p => (double)p.Price)];
+            }
 
-    public double DealPosition => Product.CurrentPrice is { } now && Product.LowestSeen is { } low && Product.HighestSeen is { } high && high > low
+            var from = Today.AddDays(-SparklineDays);
+            List<double> values = [.. Product.MarketHistory.Where(p => p.Day >= from && p.Day < Today).Select(p => (double)p.Price)];
+            if (Product.CurrentPrice is { } now)
+            {
+                values.Add((double)now);
+            }
+
+            return values;
+        }
+    }
+
+    public double DealPosition => Product.CurrentPrice is { } now && Low is { } low && High is { } high && high > low
         ? (double)((now - low) / (high - low))
         : double.NaN;
 
@@ -120,6 +223,7 @@ public sealed partial class PinnedItemViewModel : ObservableObject
     /// <summary>Re-reads everything derived from <see cref="Product"/> after a price check.</summary>
     public void Refresh()
     {
+        _insight = Analyze();
         foreach (var name in DerivedProperties)
         {
             OnPropertyChanged(name);
@@ -151,6 +255,16 @@ public sealed partial class PinnedItemViewModel : ObservableObject
         Refresh();
         return true;
     }
+
+    private static DateOnly Today => DateOnly.FromDateTime(DateTime.Now);
+
+    private DealInsight Analyze() => DealAnalysis.Analyze(Product.CurrentPrice, Product.MarketHistory, Today);
+
+    private static decimal? Min(decimal? a, decimal? b) => a is { } x && b is { } y ? Math.Min(x, y) : a ?? b;
+
+    private static decimal? Max(decimal? a, decimal? b) => a is { } x && b is { } y ? Math.Max(x, y) : a ?? b;
+
+    private static string Signed(decimal percent) => percent < 0 ? $"−{Format.Percent(-percent)}" : $"+{Format.Percent(percent)}";
 
     [RelayCommand]
     private Task SaveTargetAsync() => _owner.SaveTargetAsync(this);

@@ -2,6 +2,15 @@
 
 What changed in each PriceRunner Panel release. The section for a version becomes its GitHub release notes, which the app shows in its update window, so write for people using the app.
 
+## [0.3.0] - 2026-11-01
+
+### Added
+- **Spot fake discounts.** Each pinned product now pulls PriceRunner's price history for the past year and gets a verdict: *REAL DEAL*, *GOOD PRICE*, *TYPICAL PRICE*, *ABOVE TYPICAL* or *⚠ INFLATED DROP*. The yardstick is the product's typical price (the median 3–11 weeks ago), so a price that was raised just before a sale like Black Friday can't pass itself off as the normal price. A drop that only takes back a recent rise doesn't notify.
+- Each card shows the typical price and the lowest price of the year (with the store and date). The history chart, the low/high meter and the "lowest price" alert now cover the whole year, not just the time since you pinned.
+
+### Changed
+- **Unpinning deletes everything the app kept about the product:** its price history, target and picture, and its notifications in the Action Center. Pictures from searches are cleared the next time the app starts.
+
 ## [0.2.0] - 2026-11-01
 
 ### Added

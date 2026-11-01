@@ -8,7 +8,7 @@ namespace PriceRunnerPanel.Services;
 
 /// <summary>
 /// Talks to the public JSON endpoints the pricerunner.se web app uses: product search and the offers of one
-/// product. Read-only and anonymous; no cookies or sign-in.
+/// product, its variants and its price history. Read-only and anonymous; no cookies or sign-in.
 /// </summary>
 public sealed class PriceRunnerClient : IDisposable
 {
@@ -157,6 +157,36 @@ public sealed class PriceRunnerClient : IDisposable
         }
 
         return new PriceSnapshot(lowestInStock, lowestOverall, currency, count, merchant, offerUrl);
+    }
+
+    /// <summary>
+    /// The product's lowest price per day over the past year, from Swedish stores: the data behind the
+    /// "Prisutveckling" tab on the product page. Oldest first.
+    /// </summary>
+    public async Task<IReadOnlyList<MarketPoint>> GetPriceHistoryAsync(string productId, CancellationToken cancellationToken)
+    {
+        var url = $"/se/api/product-information-edge-rest/public/pricehistory/product/{Uri.EscapeDataString(productId)}/{Market}/DAY"
+            + "?merchantId=&selectedInterval=ONE_YEAR&filter=NATIONAL";
+        using var document = await GetJsonAsync(url, cancellationToken).ConfigureAwait(false);
+        if (!document.RootElement.TryGetProperty("history", out var history) || history.ValueKind != JsonValueKind.Array)
+        {
+            return [];
+        }
+
+        // One point per day; the timestamp is the day's start in Swedish time, e.g. "2026-08-27T00:00:00.000+02:00".
+        var days = new SortedDictionary<DateOnly, MarketPoint>();
+        foreach (var point in history.EnumerateArray())
+        {
+            if (Str(point, "timestamp") is { Length: >= 10 } timestamp
+                && DateOnly.TryParseExact(timestamp[..10], "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var day)
+                && Dec(point, "price") is { } price && price > 0
+                && (!days.TryGetValue(day, out var existing) || price < existing.Price))
+            {
+                days[day] = new MarketPoint(day, price, Str(point, "merchantName"));
+            }
+        }
+
+        return [.. days.Values];
     }
 
     /// <summary>

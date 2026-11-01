@@ -12,6 +12,7 @@ public sealed record PriceCheck(decimal? Previous, decimal Current, bool IsNewLo
 public sealed class PriceTracker(PriceRunnerClient client, TimeProvider time)
 {
     private const int MaxHistoryPoints = 1000;
+    private static readonly TimeSpan MarketHistoryAge = TimeSpan.FromHours(12);
 
     public async Task<PriceCheck?> CheckAsync(PinnedProduct pin, CancellationToken cancellationToken)
     {
@@ -71,6 +72,33 @@ public sealed class PriceTracker(PriceRunnerClient client, TimeProvider time)
             }
         }
 
+        await RefreshMarketHistoryAsync(pin, cancellationToken).ConfigureAwait(false);
         return new PriceCheck(previous, price, isNewLow, reachedTarget, snapshot.CheapestMerchant);
+    }
+
+    /// <summary>PriceRunner's year of daily prices changes once a day; fetched at most every <see cref="MarketHistoryAge"/>.</summary>
+    private async Task RefreshMarketHistoryAsync(PinnedProduct pin, CancellationToken cancellationToken)
+    {
+        var now = time.GetUtcNow();
+        if (pin.MarketHistoryFetched is { } fetched && now - fetched < MarketHistoryAge)
+        {
+            return;
+        }
+
+        try
+        {
+            var history = await client.GetPriceHistoryAsync(pin.Id, cancellationToken).ConfigureAwait(false);
+            pin.MarketHistory = [.. history];
+            pin.MarketHistoryFetched = now;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or PriceRunnerException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            if (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+
+            // Keep the history we have; the next check tries again. The price itself was checked fine.
+        }
     }
 }

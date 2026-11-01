@@ -29,6 +29,14 @@ A copy built from source works fully but never replaces itself; the update windo
 - **Watchlist** — every pinned product shows its current lowest price, the change since you pinned it, its price
   history, and a meter of where today's price sits between the lowest and highest seen. The card glows green at
   the lowest price seen.
+- **Real deal or fake discount?** Each card compares today's price with the product's *typical* price: the median of
+  PriceRunner's daily lowest price from 3 to 11 weeks ago. The last three weeks are left out, so a price raised
+  before a sale (the Black Friday trick) doesn't become the yardstick. The verdict chip says **REAL DEAL** (clearly
+  below typical and near the year's low, or 12 % or more below typical), **GOOD PRICE** (5 % below), **TYPICAL
+  PRICE**, **ABOVE TYPICAL** (5 % above) or **⚠ INFLATED DROP**: the price was raised by 5 % or more in the last
+  month and is coming down again without getting cheaper than before. Inflated drops don't notify. The card also
+  shows the typical price and the year's lowest price with its store and date, and its chart and meter cover the
+  year.
 - **Variants are grouped** — pin several colours of one product and they share a box headed by the product's
   name and its cheapest colour; each card shows its colour. Grouping uses PriceRunner's own variant groups, and a
   single store's listing (e.g. "Sony WH-1000XM6 … Sand Pink") joins the box when its name starts with the
@@ -71,6 +79,9 @@ Two public JSON endpoints that the pricerunner.se web app itself uses, anonymous
 - search: `/se/api/search-edge-rest/public/search/v6/SE?q=…`
 - offers of one product: `/se/api/product-detail-edge-rest/public/product-detail/v0/offers/SE/{id}` filtered to new
   items from Swedish stores.
+- price history of one product (the product page's *Prisutveckling* tab):
+  `/se/api/product-information-edge-rest/public/pricehistory/product/{id}/SE/DAY?selectedInterval=ONE_YEAR&filter=NATIONAL`,
+  one lowest price per day for the past year, fetched at most twice a day per product.
 
 The tracked price is the cheapest **in-stock, new** offer (falling back to the cheapest offer when nothing is in
 stock), which matches the price PriceRunner shows. The endpoints are undocumented and may change; a failed check
@@ -79,4 +90,5 @@ shows its error on the card and the next check tries again.
 ## Data
 
 Everything lives in `%LOCALAPPDATA%\PriceRunnerPanel`: `state.json` (pins, history, settings) and an `images`
-thumbnail cache. Set `PRICERUNNERPANEL_DATA` to use another folder (handy for testing).
+thumbnail cache. Unpinning a product deletes everything kept about it (its prices, history, target, picture and
+notifications); thumbnails of search results are cleared at the next start. Set `PRICERUNNERPANEL_DATA` to use another folder (handy for testing).

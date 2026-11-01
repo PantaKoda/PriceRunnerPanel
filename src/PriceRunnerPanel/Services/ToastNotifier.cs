@@ -14,6 +14,7 @@ namespace PriceRunnerPanel.Services;
 public sealed class ToastNotifier
 {
     private const string AppUserModelId = "PriceRunnerPanel.Desktop";
+    private const string Group = "prices";
 
     private readonly Windows.UI.Notifications.ToastNotifier? _notifier;
 
@@ -59,7 +60,7 @@ public sealed class ToastNotifier
                 binding.AppendChild(text);
             }
 
-            var shown = new ToastNotification(xml) { Tag = tag.Length <= 64 ? tag : tag[..64], Group = "prices" };
+            var shown = new ToastNotification(xml) { Tag = TagFor(tag), Group = Group };
             if (onActivated is not null)
             {
                 shown.Activated += (_, _) => onActivated();
@@ -73,6 +74,25 @@ public sealed class ToastNotifier
             return false;
         }
     }
+
+    /// <summary>Clears this tag's notifications from the Action Center (e.g. for a product that was unpinned).</summary>
+    public void Remove(string tag)
+    {
+        if (_notifier is null)
+        {
+            return;
+        }
+
+        try
+        {
+            ToastNotificationManager.History.Remove(TagFor(tag), Group, AppUserModelId);
+        }
+        catch (Exception ex) when (ex is COMException or ArgumentException)
+        {
+        }
+    }
+
+    private static string TagFor(string tag) => tag.Length <= 64 ? tag : tag[..64];
 
     [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
     private static extern int SetCurrentProcessExplicitAppUserModelID(string appId);

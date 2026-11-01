@@ -50,6 +50,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         }
 
         Regroup();
+        _images.Prune(_state.Pins.Select(p => PriceRunnerClient.ImageUrl(p.ImagePath)));
 
         SelectedInterval = Intervals.FirstOrDefault(i => i.Minutes == _state.Settings.RefreshMinutes) ?? Intervals[3];
         IsWatchlistTab = Pins.Count > 0;
@@ -329,6 +330,10 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         UpdateStatus();
     }
 
+    /// <summary>
+    /// Stops tracking and forgets the product: its prices, history and target leave state.json, and its picture
+    /// and notifications go too. Nothing about it is kept.
+    /// </summary>
     internal async Task UnpinAsync(PinnedItemViewModel item)
     {
         Pins.Remove(item);
@@ -338,7 +343,13 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             result.IsPinned = false;
         }
 
-        FooterText = $"Unpinned {item.Name}";
+        if (!_state.Pins.Any(p => p.ImagePath == item.Product.ImagePath))
+        {
+            _images.Delete(PriceRunnerClient.ImageUrl(item.Product.ImagePath));
+        }
+
+        _toasts.Remove(item.Id);
+        FooterText = $"Unpinned {item.Name} and deleted its data";
         await SaveAsync();
         UpdateStatus();
     }
@@ -455,16 +466,25 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private void Notify(PinnedItemViewModel item, PriceCheck check)
     {
         var product = item.Product;
+        var insight = item.Insight;
         var price = Format.Price(check.Current, product.Currency);
         var where = check.Merchant is { Length: > 0 } merchant ? $" at {merchant}" : "";
+        // With PriceRunner's history, "new low" means below anything in the past year, not just since pinning.
+        var isNewLow = check.DropPercent is not null && (insight.YearLow is { } yearLow ? check.Current < yearLow.Price : check.IsNewLow);
         string? title = null;
         if (check.ReachedTarget)
         {
             title = "🎯 Target price reached";
         }
-        else if (check.IsNewLow && check.DropPercent is not null)
+        else if (insight.Verdict == DealVerdict.Inflated && check.DropPercent is { } undone)
         {
-            title = "⬇ New lowest price";
+            // The drop only takes back a recent price rise: not worth a notification.
+            FooterText = $"Ignored −{Format.Percent(undone)} on {product.Name}: it only undoes a recent price rise";
+            return;
+        }
+        else if (isNewLow)
+        {
+            title = insight.YearLow is not null ? "⬇ Lowest price in a year" : "⬇ New lowest price";
         }
         else if (check.DropPercent is { } drop && drop >= _state.Settings.MinDropPercent)
         {
@@ -477,9 +497,11 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         }
 
         var was = check.Previous is { } previous ? $" (was {Format.Price(previous, product.Currency)})" : "";
+        // e.g. "REAL DEAL · Typical 4 490 kr · 1y low 3 069 kr (CDON, 27 Aug)"
+        var context = item.HasVerdict ? $"\n{item.VerdictText.TrimStart('✓', ' ')}  ·  {item.InsightText}" : item.HasInsight ? $"\n{item.InsightText}" : "";
         FooterText = $"{title}: {product.Name}";
         var url = PriceRunnerClient.ProductPageUrl(product.Url);
-        _toasts.Show(title, $"{product.Name}\n{price}{where}{was}", product.Id, () => OpenUrl(url));
+        _toasts.Show(title, $"{product.Name}\n{price}{where}{was}{context}", product.Id, () => OpenUrl(url));
     }
 
     private PinnedItemViewModel CreatePinned(PinnedProduct product)
