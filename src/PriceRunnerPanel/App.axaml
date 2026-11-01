@@ -1,0 +1,394 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="PriceRunnerPanel.App"
+             RequestedThemeVariant="Light">
+  <!--
+    "Clean room HUD" visual language: a pale glass surface with faint stars, a cyan HUD accent and corner
+    brackets, frosted white cards. Green means cheaper, red means pricier. Motion only while work is running.
+  -->
+  <Application.Resources>
+    <ResourceDictionary>
+      <LinearGradientBrush x:Key="SpaceSurfaceBrush" StartPoint="0%,0%" EndPoint="100%,100%">
+        <GradientStop Color="#FBFDFF" Offset="0" />
+        <GradientStop Color="#EEF5FC" Offset="0.55" />
+        <GradientStop Color="#E2ECF8" Offset="1" />
+      </LinearGradientBrush>
+      <RadialGradientBrush x:Key="GlowBrush" Center="85%,0%" GradientOrigin="85%,0%" RadiusX="70%" RadiusY="45%">
+        <GradientStop Color="#3300B4D8" Offset="0" />
+        <GradientStop Color="#0000B4D8" Offset="1" />
+      </RadialGradientBrush>
+      <SolidColorBrush x:Key="HudAccentBrush" Color="#0088AE" />
+      <SolidColorBrush x:Key="HudAccentSoftBrush" Color="#1A0088AE" />
+      <SolidColorBrush x:Key="HudFrameBrush" Color="#590088AE" />
+      <SolidColorBrush x:Key="HudDimBrush" Color="#56637A" />
+      <SolidColorBrush x:Key="TextBrush" Color="#132036" />
+      <SolidColorBrush x:Key="StarBrush" Color="#38203A60" />
+      <SolidColorBrush x:Key="RowHoverBrush" Color="#140088AE" />
+      <SolidColorBrush x:Key="PanelBrush" Color="#0C0088AE" />
+      <SolidColorBrush x:Key="CardBrush" Color="#C8FFFFFF" />
+      <SolidColorBrush x:Key="CardBorderBrush" Color="#2E0088AE" />
+      <SolidColorBrush x:Key="ImageWellBrush" Color="#FFFFFFFF" />
+      <SolidColorBrush x:Key="DownBrush" Color="#0B9463" />
+      <SolidColorBrush x:Key="DownSoftBrush" Color="#160B9463" />
+      <SolidColorBrush x:Key="UpBrush" Color="#CC2D4F" />
+      <SolidColorBrush x:Key="UpSoftBrush" Color="#14CC2D4F" />
+      <SolidColorBrush x:Key="TargetBrush" Color="#7A4DE0" />
+      <SolidColorBrush x:Key="TargetSoftBrush" Color="#167A4DE0" />
+      <BoxShadows x:Key="PanelShadow">0 6 24 0 #2A0A3A6A</BoxShadows>
+      <BoxShadows x:Key="CardShadow">0 2 10 0 #140A3A6A</BoxShadows>
+      <BoxShadows x:Key="CardHoverShadow">0 3 14 0 #330088AE</BoxShadows>
+      <BoxShadows x:Key="LowGlowShadow">0 0 10 0 #550B9463</BoxShadows>
+
+      <CornerRadius x:Key="RadiusSmall">6</CornerRadius>
+      <CornerRadius x:Key="RadiusMedium">10</CornerRadius>
+      <CornerRadius x:Key="RadiusLarge">16</CornerRadius>
+
+      <!-- Icon geometries from Material Design Icons (Apache License 2.0). -->
+      <StreamGeometry x:Key="IconRefresh">M17.65 6.35A7.96 7.96 0 0 0 12 4a8 8 0 1 0 7.73 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z</StreamGeometry>
+      <StreamGeometry x:Key="IconMinimize">M6 11h12v2H6z</StreamGeometry>
+      <StreamGeometry x:Key="IconClose">M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z</StreamGeometry>
+      <StreamGeometry x:Key="IconOpenExternal">M14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7zm5 16H5V5h7V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7h-2v7z</StreamGeometry>
+      <StreamGeometry x:Key="IconSearch">M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z</StreamGeometry>
+      <StreamGeometry x:Key="IconPin">M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z</StreamGeometry>
+      <StreamGeometry x:Key="IconPinOff">M2 5.27 3.28 4 20 20.72 18.73 22l-5.93-5.93V22h-1.6v-6H6v-2l2-2v-.73L2 5.27M16 12l2 2v2h-.18L8 6.18V4H7V2h10v2h-1v8z</StreamGeometry>
+      <StreamGeometry x:Key="IconStore">M20 4H4v2h16V4zm1 10v-2l-1-5H4l-1 5v2h1v6h10v-6h4v6h2v-6h1zm-9 4H6v-4h6v4z</StreamGeometry>
+      <StreamGeometry x:Key="IconTarget">M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8zm0-14a6 6 0 1 0 6 6 6 6 0 0 0-6-6zm0 10a4 4 0 1 1 4-4 4 4 0 0 1-4 4zm0-6a2 2 0 1 0 2 2 2 2 0 0 0-2-2z</StreamGeometry>
+      <StreamGeometry x:Key="IconGrip">M22 22h-2v-2h2v2zm0-4h-2v-2h2v2zm-4 4h-2v-2h2v2zm0-4h-2v-2h2v2zm-4 4h-2v-2h2v2zm8-8h-2v-2h2v2z</StreamGeometry>
+      <StreamGeometry x:Key="IconClear">M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z</StreamGeometry>
+    </ResourceDictionary>
+  </Application.Resources>
+
+  <Application.Styles>
+    <FluentTheme>
+      <FluentTheme.Palettes>
+        <ColorPaletteResources x:Key="Light" Accent="#FF0088AE" RegionColor="#FFF7FBFF" BaseHigh="#FF132036" />
+      </FluentTheme.Palettes>
+    </FluentTheme>
+
+    <Style Selector="Window">
+      <Setter Property="FontFamily" Value="Segoe UI Variable Text, Segoe UI, Inter, sans-serif" />
+      <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+    </Style>
+
+    <!-- Compact icon-only buttons; each has a tooltip and an accessible name. -->
+    <Style Selector="Button.icon">
+      <Setter Property="Padding" Value="6" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="MinWidth" Value="28" />
+      <Setter Property="MinHeight" Value="28" />
+      <Setter Property="CornerRadius" Value="{StaticResource RadiusSmall}" />
+      <Setter Property="Foreground" Value="{DynamicResource HudDimBrush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.icon:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource RowHoverBrush}" />
+    </Style>
+    <Style Selector="Button.icon:pointerover">
+      <Setter Property="Foreground" Value="{DynamicResource HudAccentBrush}" />
+    </Style>
+    <Style Selector="Button.icon.danger:pointerover">
+      <Setter Property="Foreground" Value="{DynamicResource UpBrush}" />
+    </Style>
+    <Style Selector="Button.icon PathIcon">
+      <Setter Property="Width" Value="14" />
+      <Setter Property="Height" Value="14" />
+    </Style>
+
+    <!-- Turning refresh icon while a check runs. Stops with the work, so nothing spins while idle. -->
+    <Style Selector="Button.icon.spinning PathIcon">
+      <Setter Property="Foreground" Value="{DynamicResource HudAccentBrush}" />
+      <Style.Animations>
+        <Animation Duration="0:0:0.9" IterationCount="INFINITE">
+          <KeyFrame Cue="0%">
+            <Setter Property="RotateTransform.Angle" Value="0" />
+          </KeyFrame>
+          <KeyFrame Cue="100%">
+            <Setter Property="RotateTransform.Angle" Value="360" />
+          </KeyFrame>
+        </Animation>
+      </Style.Animations>
+    </Style>
+
+    <!-- Segmented tabs: SEARCH / WATCHLIST. -->
+    <Style Selector="ToggleButton.seg">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Padding" Value="14,6" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="Foreground" Value="{DynamicResource HudDimBrush}" />
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="LetterSpacing" Value="1.8" />
+    </Style>
+    <Style Selector="ToggleButton.seg:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource RowHoverBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource HudAccentBrush}" />
+    </Style>
+    <Style Selector="ToggleButton.seg:checked /template/ ContentPresenter">
+      <Setter Property="Background" Value="White" />
+      <Setter Property="Foreground" Value="{DynamicResource HudAccentBrush}" />
+      <Setter Property="BoxShadow" Value="{StaticResource CardShadow}" />
+    </Style>
+
+    <!-- Cards: frosted white over the surface, lifting slightly on hover. -->
+    <Style Selector="Border.card">
+      <Setter Property="Background" Value="{DynamicResource CardBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{StaticResource RadiusMedium}" />
+      <Setter Property="Padding" Value="10" />
+      <Setter Property="Margin" Value="0,0,0,8" />
+      <Setter Property="BoxShadow" Value="{StaticResource CardShadow}" />
+      <Setter Property="Transitions">
+        <Transitions>
+          <BoxShadowsTransition Property="BoxShadow" Duration="0:0:0.18" />
+          <BrushTransition Property="BorderBrush" Duration="0:0:0.18" />
+        </Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="Border.card:pointerover">
+      <Setter Property="BoxShadow" Value="{StaticResource CardHoverShadow}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource HudFrameBrush}" />
+    </Style>
+    <Style Selector="Border.card.lowest">
+      <Setter Property="BorderBrush" Value="{DynamicResource DownBrush}" />
+      <Setter Property="BoxShadow" Value="{StaticResource LowGlowShadow}" />
+    </Style>
+
+    <Style Selector="Border.thumb">
+      <Setter Property="Width" Value="56" />
+      <Setter Property="Height" Value="56" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Background" Value="{DynamicResource ImageWellBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="ClipToBounds" Value="True" />
+      <Setter Property="VerticalAlignment" Value="Top" />
+    </Style>
+
+    <!-- Chips: small rounded labels with a soft fill. -->
+    <Style Selector="Border.chip">
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Padding" Value="6,1" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="BorderBrush" Value="{DynamicResource HudFrameBrush}" />
+      <Setter Property="Background" Value="{DynamicResource PanelBrush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="HorizontalAlignment" Value="Left" />
+    </Style>
+    <Style Selector="Border.chip TextBlock">
+      <Setter Property="FontSize" Value="10.5" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{DynamicResource HudDimBrush}" />
+    </Style>
+    <Style Selector="Border.chip.down">
+      <Setter Property="BorderBrush" Value="{DynamicResource DownBrush}" />
+      <Setter Property="Background" Value="{DynamicResource DownSoftBrush}" />
+    </Style>
+    <Style Selector="Border.chip.down TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource DownBrush}" />
+    </Style>
+    <Style Selector="Border.chip.up">
+      <Setter Property="BorderBrush" Value="{DynamicResource UpBrush}" />
+      <Setter Property="Background" Value="{DynamicResource UpSoftBrush}" />
+    </Style>
+    <Style Selector="Border.chip.up TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource UpBrush}" />
+    </Style>
+    <Style Selector="Border.chip.target">
+      <Setter Property="BorderBrush" Value="{DynamicResource TargetBrush}" />
+      <Setter Property="Background" Value="{DynamicResource TargetSoftBrush}" />
+    </Style>
+    <Style Selector="Border.chip.target TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource TargetBrush}" />
+    </Style>
+    <Style Selector="Border.chip.solid">
+      <Setter Property="Background" Value="{DynamicResource DownBrush}" />
+    </Style>
+    <Style Selector="Border.chip.solid TextBlock">
+      <Setter Property="Foreground" Value="White" />
+      <Setter Property="LetterSpacing" Value="1.2" />
+    </Style>
+
+    <!-- Pin button on a search result: accent outline; filled once pinned. -->
+    <Style Selector="Button.pin">
+      <Setter Property="Padding" Value="9,3" />
+      <Setter Property="MinHeight" Value="24" />
+      <Setter Property="CornerRadius" Value="12" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="BorderBrush" Value="{DynamicResource HudAccentBrush}" />
+      <Setter Property="Background" Value="White" />
+      <Setter Property="Foreground" Value="{DynamicResource HudAccentBrush}" />
+      <Setter Property="HorizontalAlignment" Value="Right" />
+    </Style>
+    <Style Selector="Button.pin:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource RowHoverBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource HudAccentBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource HudAccentBrush}" />
+    </Style>
+    <Style Selector="Button.pin.pinned">
+      <Setter Property="Background" Value="{DynamicResource HudAccentBrush}" />
+      <Setter Property="Foreground" Value="White" />
+    </Style>
+    <Style Selector="Button.pin.pinned:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="#006A88" />
+      <Setter Property="Foreground" Value="White" />
+    </Style>
+    <Style Selector="Button.pin TextBlock">
+      <Setter Property="FontSize" Value="10" />
+      <Setter Property="FontWeight" Value="Bold" />
+      <Setter Property="LetterSpacing" Value="1.4" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <!-- Quiet text link (product name opens PriceRunner). -->
+    <Style Selector="Button.link">
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="HorizontalAlignment" Value="Left" />
+      <Setter Property="HorizontalContentAlignment" Value="Left" />
+      <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+    </Style>
+    <Style Selector="Button.link:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Foreground" Value="{DynamicResource HudAccentBrush}" />
+    </Style>
+    <Style Selector="Button.link:pointerover TextBlock">
+      <Setter Property="TextDecorations" Value="Underline" />
+    </Style>
+
+    <Style Selector="TextBlock.secondary">
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="Foreground" Value="{DynamicResource HudDimBrush}" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+    <Style Selector="TextBlock.title">
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="MaxLines" Value="2" />
+    </Style>
+    <Style Selector="TextBlock.price">
+      <Setter Property="FontSize" Value="17" />
+      <Setter Property="FontWeight" Value="Bold" />
+      <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+      <Setter Property="HorizontalAlignment" Value="Right" />
+      <Setter Property="FontFeatures" Value="+tnum" />
+    </Style>
+    <Style Selector="TextBlock.price.big">
+      <Setter Property="FontSize" Value="22" />
+    </Style>
+    <!-- HUD labels: small, wide-tracked, accent colored. Text is written in uppercase. -->
+    <Style Selector="TextBlock.hud">
+      <Setter Property="FontSize" Value="10" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="LetterSpacing" Value="1.8" />
+      <Setter Property="Foreground" Value="{DynamicResource HudAccentBrush}" />
+    </Style>
+    <Style Selector="TextBlock.brand">
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="FontWeight" Value="Bold" />
+      <Setter Property="LetterSpacing" Value="3" />
+      <Setter Property="Foreground" Value="{DynamicResource HudAccentBrush}" />
+    </Style>
+
+    <!-- Search box: a white capsule with a cyan focus ring. -->
+    <Style Selector="TextBox.search">
+      <Setter Property="MinHeight" Value="38" />
+      <Setter Property="Padding" Value="34,9,30,9" />
+      <Setter Property="FontSize" Value="13.5" />
+      <Setter Property="CornerRadius" Value="19" />
+      <Setter Property="Background" Value="White" />
+      <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBox.search:pointerover /template/ Border#PART_BorderElement">
+      <Setter Property="Background" Value="White" />
+      <Setter Property="BorderBrush" Value="{DynamicResource HudFrameBrush}" />
+    </Style>
+    <Style Selector="TextBox.search:focus /template/ Border#PART_BorderElement">
+      <Setter Property="Background" Value="White" />
+      <Setter Property="BorderBrush" Value="{DynamicResource HudAccentBrush}" />
+      <Setter Property="BorderThickness" Value="1.5" />
+    </Style>
+    <Style Selector="TextBox.search /template/ TextBlock#PART_Watermark, TextBox.search /template/ TextBlock#PART_Placeholder">
+      <Setter Property="Opacity" Value="1" />
+      <Setter Property="Foreground" Value="{DynamicResource HudDimBrush}" />
+    </Style>
+
+    <!-- Target price field on a pinned card. -->
+    <Style Selector="TextBox.target">
+      <Setter Property="MinHeight" Value="26" />
+      <Setter Property="MinWidth" Value="90" />
+      <Setter Property="Padding" Value="8,3" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="Background" Value="White" />
+      <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBox.target /template/ TextBlock#PART_Watermark, TextBox.target /template/ TextBlock#PART_Placeholder">
+      <Setter Property="Opacity" Value="1" />
+      <Setter Property="Foreground" Value="{DynamicResource HudDimBrush}" />
+    </Style>
+
+    <Style Selector="ComboBox.compact">
+      <Setter Property="MinHeight" Value="26" />
+      <Setter Property="Padding" Value="8,2" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="Background" Value="White" />
+      <Setter Property="CornerRadius" Value="6" />
+    </Style>
+
+    <!-- Accent action button ("Check now"). -->
+    <Style Selector="Button.accent">
+      <Setter Property="Padding" Value="10,4" />
+      <Setter Property="MinHeight" Value="26" />
+      <Setter Property="CornerRadius" Value="13" />
+      <Setter Property="Background" Value="{DynamicResource HudAccentBrush}" />
+      <Setter Property="Foreground" Value="White" />
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Button.accent:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="#006A88" />
+      <Setter Property="Foreground" Value="White" />
+    </Style>
+
+    <!-- Scan line: a thin indeterminate bar shown only while something is active. -->
+    <Style Selector="ProgressBar.scan">
+      <Setter Property="Height" Value="2" />
+      <Setter Property="MinHeight" Value="2" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Foreground" Value="{DynamicResource HudAccentBrush}" />
+      <Setter Property="IsIndeterminate" Value="True" />
+      <Setter Property="IsHitTestVisible" Value="False" />
+    </Style>
+
+    <!-- Live status dot in the header pill: breathes only while checking. -->
+    <Style Selector="Ellipse.live">
+      <Setter Property="Width" Value="7" />
+      <Setter Property="Height" Value="7" />
+      <Setter Property="Fill" Value="{DynamicResource DownBrush}" />
+    </Style>
+    <Style Selector="Ellipse.live.busy">
+      <Setter Property="Fill" Value="{DynamicResource HudAccentBrush}" />
+      <Style.Animations>
+        <Animation Duration="0:0:1.1" IterationCount="INFINITE" PlaybackDirection="Alternate">
+          <KeyFrame Cue="0%">
+            <Setter Property="Opacity" Value="1" />
+          </KeyFrame>
+          <KeyFrame Cue="100%">
+            <Setter Property="Opacity" Value="0.25" />
+          </KeyFrame>
+        </Animation>
+      </Style.Animations>
+    </Style>
+  </Application.Styles>
+</Application>

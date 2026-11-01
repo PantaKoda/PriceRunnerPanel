@@ -1,0 +1,270 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:PriceRunnerPanel.ViewModels"
+        xmlns:c="using:PriceRunnerPanel.Controls"
+        x:Class="PriceRunnerPanel.Views.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Title="PriceRunner Panel"
+        Width="480" Height="720" MinWidth="380" MinHeight="420"
+        WindowDecorations="None"
+        CanResize="True"
+        Background="Transparent"
+        TransparencyLevelHint="Transparent"
+        WindowStartupLocation="CenterScreen">
+
+  <Window.KeyBindings>
+    <KeyBinding Gesture="F5" Command="{Binding CheckAllCommand}" />
+    <KeyBinding Gesture="Ctrl+F" Command="{Binding ShowSearchCommand}" />
+    <KeyBinding Gesture="Ctrl+1" Command="{Binding ShowSearchCommand}" />
+    <KeyBinding Gesture="Ctrl+2" Command="{Binding ShowWatchlistCommand}" />
+  </Window.KeyBindings>
+
+  <!-- Layers: surface gradient, a cyan glow, faint stars, HUD corners; content above them. Margin leaves room for the shadow. -->
+  <Panel Margin="10">
+    <Border CornerRadius="{StaticResource RadiusLarge}" Background="{DynamicResource SpaceSurfaceBrush}" BoxShadow="{StaticResource PanelShadow}" />
+    <Border CornerRadius="{StaticResource RadiusLarge}" Background="{DynamicResource GlowBrush}" IsHitTestVisible="False" />
+    <Border CornerRadius="{StaticResource RadiusLarge}" ClipToBounds="True">
+      <c:StarField />
+    </Border>
+    <c:HudCorners Stroke="{DynamicResource HudFrameBrush}" Length="16" Margin="2" />
+
+    <Border CornerRadius="{StaticResource RadiusLarge}" BorderBrush="{DynamicResource HudFrameBrush}" BorderThickness="1">
+      <DockPanel>
+        <!-- Header: drag to move -->
+        <Border DockPanel.Dock="Top" Padding="16,10,8,4" Background="Transparent" PointerPressed="OnHeaderPointerPressed">
+          <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+            <TextBlock Classes="brand" Text="◆ PRICERUNNER PANEL" FontSize="12.5" LetterSpacing="2.2" VerticalAlignment="Center" />
+            <Border Grid.Column="1" CornerRadius="10" Padding="8,2" BorderThickness="1" BorderBrush="{DynamicResource HudFrameBrush}"
+                    Background="White" VerticalAlignment="Center" HorizontalAlignment="Left" ToolTip.Tip="{Binding StatusText}">
+              <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6">
+                <Ellipse Classes="live" Classes.busy="{Binding IsChecking}" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Classes="hud" Text="{Binding StatusText}" FontSize="9.5" LetterSpacing="0.8"
+                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+              </Grid>
+            </Border>
+            <StackPanel Grid.Column="2" Orientation="Horizontal">
+              <Button Classes="icon" Classes.spinning="{Binding IsChecking}" Command="{Binding CheckAllCommand}" IsVisible="{Binding HasPins}"
+                      ToolTip.Tip="Check all prices now (F5)" AutomationProperties.Name="Check all prices now">
+                <PathIcon Data="{StaticResource IconRefresh}" />
+              </Button>
+              <Button Classes="icon" Click="OnMinimizeClick" ToolTip.Tip="Minimize" AutomationProperties.Name="Minimize">
+                <PathIcon Data="{StaticResource IconMinimize}" />
+              </Button>
+              <Button Classes="icon danger" Click="OnCloseClick" ToolTip.Tip="Hide to the tray — prices keep being tracked"
+                      AutomationProperties.Name="Hide to tray">
+                <PathIcon Data="{StaticResource IconClose}" />
+              </Button>
+            </StackPanel>
+          </Grid>
+        </Border>
+
+        <!-- Tabs -->
+        <Border DockPanel.Dock="Top" Margin="14,6,14,10" Padding="3" CornerRadius="11" Background="{DynamicResource PanelBrush}"
+                BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+          <Grid ColumnDefinitions="*,*" ColumnSpacing="3">
+            <ToggleButton Classes="seg" IsChecked="{Binding IsSearchTab, Mode=OneWay}" Command="{Binding ShowSearchCommand}">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <PathIcon Data="{StaticResource IconSearch}" Width="12" Height="12" />
+                <TextBlock Text="SEARCH" VerticalAlignment="Center" />
+              </StackPanel>
+            </ToggleButton>
+            <ToggleButton Grid.Column="1" Classes="seg" IsChecked="{Binding IsWatchlistTab, Mode=OneWay}" Command="{Binding ShowWatchlistCommand}">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <PathIcon Data="{StaticResource IconPin}" Width="12" Height="12" />
+                <TextBlock Text="{Binding WatchlistTabLabel}" VerticalAlignment="Center" />
+              </StackPanel>
+            </ToggleButton>
+          </Grid>
+        </Border>
+
+        <!-- Footer: last event, data source, resize grip. -->
+        <Grid DockPanel.Dock="Bottom" ColumnDefinitions="*,Auto,Auto" Margin="16,4,4,6">
+          <TextBlock Classes="secondary" Text="{Binding FooterText}" VerticalAlignment="Center" />
+          <TextBlock Grid.Column="1" Classes="secondary" Text="data · pricerunner.se" Margin="8,0" VerticalAlignment="Center" Opacity="0.8" />
+          <Border Grid.Column="2" Width="16" Height="16" Background="Transparent" Cursor="BottomRightCorner"
+                  PointerPressed="OnGripPointerPressed" ToolTip.Tip="Drag to resize">
+            <PathIcon Data="{StaticResource IconGrip}" Width="10" Height="10" Foreground="{DynamicResource HudFrameBrush}" />
+          </Border>
+        </Grid>
+
+        <Panel>
+          <!-- SEARCH -->
+          <DockPanel IsVisible="{Binding IsSearchTab}">
+            <Panel DockPanel.Dock="Top" Margin="14,0,14,6">
+              <TextBox Name="SearchBox" Classes="search" Text="{Binding Query}" PlaceholderText="Search products, e.g. Sony WH-1000XM6">
+                <TextBox.KeyBindings>
+                  <KeyBinding Gesture="Enter" Command="{Binding SearchCommand}" />
+                  <KeyBinding Gesture="Escape" Command="{Binding ClearSearchCommand}" />
+                </TextBox.KeyBindings>
+              </TextBox>
+              <PathIcon Data="{StaticResource IconSearch}" Width="15" Height="15" Margin="13,0,0,0" HorizontalAlignment="Left"
+                        Foreground="{DynamicResource HudAccentBrush}" IsHitTestVisible="False" />
+              <Button Classes="icon" HorizontalAlignment="Right" Margin="0,0,5,0" Command="{Binding ClearSearchCommand}"
+                      IsVisible="{Binding Query, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                      ToolTip.Tip="Clear (Esc)" AutomationProperties.Name="Clear search">
+                <PathIcon Data="{StaticResource IconClear}" />
+              </Button>
+            </Panel>
+            <StackPanel DockPanel.Dock="Top" Margin="18,0,18,6" Spacing="4">
+              <TextBlock Classes="secondary" Text="{Binding SearchStatus}" />
+              <ProgressBar Classes="scan" IsVisible="{Binding IsSearching}" />
+            </StackPanel>
+
+            <ScrollViewer Padding="14,2,14,6">
+              <ItemsControl ItemsSource="{Binding Results}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:SearchResultViewModel">
+                    <Border Classes="card">
+                      <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                        <Border Classes="thumb">
+                          <Image Source="{Binding Image}" Stretch="Uniform" Margin="4" />
+                        </Border>
+                        <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                          <Button Classes="link" Command="{Binding OpenCommand}" ToolTip.Tip="Open on PriceRunner">
+                            <TextBlock Classes="title" Text="{Binding Name}" />
+                          </Button>
+                          <TextBlock Classes="secondary" Text="{Binding Detail}" />
+                          <TextBlock Classes="secondary" Text="{Binding Description}" Opacity="0.85" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2" Spacing="5" VerticalAlignment="Center" MinWidth="92">
+                          <TextBlock Classes="price" Text="{Binding PriceText}" />
+                          <Border Classes="chip down" HorizontalAlignment="Right" IsVisible="{Binding HasRecentDrop}"
+                                  ToolTip.Tip="Recent price drop on PriceRunner">
+                            <TextBlock Text="{Binding RecentDropText}" />
+                          </Border>
+                          <Button Classes="pin" Classes.pinned="{Binding IsPinned}" Command="{Binding TogglePinCommand}"
+                                  ToolTip.Tip="Pin to track this price (click again to unpin)" AutomationProperties.Name="{Binding PinLabel}">
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                              <PathIcon Data="{StaticResource IconPin}" Width="11" Height="11" />
+                              <TextBlock Text="{Binding PinLabel}" />
+                            </StackPanel>
+                          </Button>
+                        </StackPanel>
+                      </Grid>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </ScrollViewer>
+          </DockPanel>
+
+          <!-- WATCHLIST -->
+          <DockPanel IsVisible="{Binding IsWatchlistTab}">
+            <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,Auto,*,Auto" ColumnSpacing="8" Margin="18,0,16,8">
+              <TextBlock Classes="hud" Text="CHECK EVERY" VerticalAlignment="Center" />
+              <ComboBox Grid.Column="1" Classes="compact" ItemsSource="{Binding Intervals}" SelectedItem="{Binding SelectedInterval}">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="vm:IntervalOption">
+                    <TextBlock Text="{Binding Label}" />
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+              <Button Grid.Column="3" Classes="accent" Command="{Binding CheckAllCommand}" IsEnabled="{Binding !IsChecking}" IsVisible="{Binding HasPins}">
+                <StackPanel Orientation="Horizontal" Spacing="5">
+                  <PathIcon Data="{StaticResource IconRefresh}" Width="11" Height="11" />
+                  <TextBlock Text="Check now" VerticalAlignment="Center" />
+                </StackPanel>
+              </Button>
+            </Grid>
+
+            <!-- Empty state -->
+            <StackPanel DockPanel.Dock="Top" IsVisible="{Binding !HasPins}" Margin="30,50" Spacing="10" HorizontalAlignment="Center">
+              <PathIcon Data="{StaticResource IconPin}" Width="34" Height="34" Foreground="{DynamicResource HudFrameBrush}" />
+              <TextBlock Classes="hud" Text="NO PRODUCTS PINNED" HorizontalAlignment="Center" />
+              <TextBlock Classes="secondary" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="280"
+                         Text="Search for something you want to buy and pin it. The panel checks its price on a schedule and tells you when it drops." />
+              <Button Classes="accent" HorizontalAlignment="Center" Command="{Binding ShowSearchCommand}" Content="Search products" Margin="0,6,0,0" />
+            </StackPanel>
+
+            <ScrollViewer Padding="14,2,14,6">
+              <ItemsControl ItemsSource="{Binding Pins}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:PinnedItemViewModel">
+                    <Border Classes="card" Classes.lowest="{Binding IsAtLowest}" Padding="12,10">
+                      <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto">
+                        <ProgressBar Grid.Row="0" Classes="scan" Margin="0,-6,0,4" VerticalAlignment="Top" IsVisible="{Binding IsChecking}" />
+
+                        <!-- Product and price -->
+                        <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                          <Border Classes="thumb">
+                            <Image Source="{Binding Image}" Stretch="Uniform" Margin="4" />
+                          </Border>
+                          <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
+                            <Button Classes="link" Command="{Binding OpenCommand}" ToolTip.Tip="Open on PriceRunner">
+                              <TextBlock Classes="title" Text="{Binding Name}" />
+                            </Button>
+                            <TextBlock Classes="secondary" Text="{Binding StoreText}" />
+                            <WrapPanel Orientation="Horizontal" ItemSpacing="4" LineSpacing="4">
+                              <Border Classes="chip solid" IsVisible="{Binding IsAtLowest}" ToolTip.Tip="The lowest price seen since you pinned it">
+                                <TextBlock Text="LOWEST SEEN" />
+                              </Border>
+                              <Border Classes="chip target" IsVisible="{Binding IsBelowTarget}">
+                                <TextBlock Text="🎯 TARGET HIT" />
+                              </Border>
+                            </WrapPanel>
+                          </StackPanel>
+                          <StackPanel Grid.Column="2" Spacing="4" VerticalAlignment="Center">
+                            <TextBlock Classes="price big" Text="{Binding CurrentPriceText}" />
+                            <Border Classes="chip" Classes.down="{Binding IsDown}" Classes.up="{Binding IsUp}" HorizontalAlignment="Right">
+                              <TextBlock Text="{Binding ChangeText}" />
+                            </Border>
+                          </StackPanel>
+                        </Grid>
+
+                        <!-- History -->
+                        <c:Sparkline Grid.Row="2" Height="40" Margin="0,10,0,4" Values="{Binding History}"
+                                     Stroke="{DynamicResource HudAccentBrush}" LowBrush="{DynamicResource DownBrush}" />
+
+                        <!-- Range: where the price sits between the lowest and highest seen -->
+                        <Grid Grid.Row="3" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" Margin="0,2,0,8">
+                          <TextBlock Classes="secondary" Text="{Binding LowText}" Foreground="{DynamicResource DownBrush}" VerticalAlignment="Center" />
+                          <c:DealMeter Grid.Column="1" Height="12" Position="{Binding DealPosition}" MarkerBrush="{DynamicResource HudAccentBrush}"
+                                       ToolTip.Tip="Where today's price sits between the lowest and highest seen" />
+                          <TextBlock Grid.Column="2" Classes="secondary" Text="{Binding HighText}" Foreground="{DynamicResource UpBrush}" VerticalAlignment="Center" />
+                        </Grid>
+
+                        <!-- Target, status and actions -->
+                        <Grid Grid.Row="4" ColumnDefinitions="Auto,Auto,*,Auto" ColumnSpacing="6">
+                          <PathIcon Data="{StaticResource IconTarget}" Width="13" Height="13" Foreground="{DynamicResource TargetBrush}" VerticalAlignment="Center" />
+                          <TextBox Grid.Column="1" Classes="target" Text="{Binding TargetInput}" PlaceholderText="Target kr" Width="96"
+                                   ToolTip.Tip="Alert when the price is at or below this (Enter to save, empty to clear)"
+                                   LostFocus="OnTargetLostFocus">
+                            <TextBox.KeyBindings>
+                              <KeyBinding Gesture="Enter" Command="{Binding SaveTargetCommand}" />
+                            </TextBox.KeyBindings>
+                          </TextBox>
+                          <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="2,0,0,0">
+                            <TextBlock Classes="secondary" Text="{Binding TargetHint}" FontSize="10.5" />
+                            <TextBlock Classes="secondary" Text="{Binding CheckedText}" FontSize="10.5" IsVisible="{Binding !HasError}" />
+                            <TextBlock Classes="secondary" Text="{Binding ErrorText}" FontSize="10.5" IsVisible="{Binding HasError}"
+                                       Foreground="{DynamicResource UpBrush}" ToolTip.Tip="{Binding ErrorText}" />
+                          </StackPanel>
+                          <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
+                            <Button Classes="icon" Command="{Binding OpenStoreCommand}" IsVisible="{Binding HasStoreLink}"
+                                    ToolTip.Tip="Go to the cheapest store" AutomationProperties.Name="Go to the cheapest store">
+                              <PathIcon Data="{StaticResource IconStore}" />
+                            </Button>
+                            <Button Classes="icon" Command="{Binding OpenCommand}" ToolTip.Tip="Open on PriceRunner" AutomationProperties.Name="Open on PriceRunner">
+                              <PathIcon Data="{StaticResource IconOpenExternal}" />
+                            </Button>
+                            <Button Classes="icon" Classes.spinning="{Binding IsChecking}" Command="{Binding CheckCommand}"
+                                    ToolTip.Tip="Check this price now" AutomationProperties.Name="Check this price now">
+                              <PathIcon Data="{StaticResource IconRefresh}" />
+                            </Button>
+                            <Button Classes="icon danger" Command="{Binding UnpinCommand}" ToolTip.Tip="Unpin (stop tracking)" AutomationProperties.Name="Unpin">
+                              <PathIcon Data="{StaticResource IconPinOff}" />
+                            </Button>
+                          </StackPanel>
+                        </Grid>
+                      </Grid>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </ScrollViewer>
+          </DockPanel>
+        </Panel>
+      </DockPanel>
+    </Border>
+  </Panel>
+</Window>
