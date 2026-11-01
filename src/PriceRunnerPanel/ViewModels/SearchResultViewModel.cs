@@ -115,6 +115,10 @@ public sealed partial class SearchResultViewModel : ObservableObject
         }
     }
 
+    public string? ConditionText => Format.Condition(Hit.Condition);
+
+    public bool HasCondition => ConditionText is not null;
+
     public bool HasOldPrice => HasRecentDrop && Hit.OldPrice is not null;
 
     public string OldPriceText => Format.Price(Hit.OldPrice, Hit.Currency);

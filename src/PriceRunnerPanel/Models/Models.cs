@@ -15,7 +15,8 @@ public sealed record SearchHit(
     double? Rating,
     int RatingCount,
     int StoreCount,
-    bool OutOfStock);
+    bool OutOfStock,
+    string? Condition);
 
 /// <summary>What to list from PriceRunner's deals: any of each kind ticked, and a discount range in percent.</summary>
 public sealed record DealFilter(
@@ -41,7 +42,9 @@ public sealed record PriceSnapshot(
     string Currency,
     int OfferCount,
     string? CheapestMerchant,
-    string? CheapestOfferUrl)
+    string? CheapestOfferUrl,
+    string? CheapestCondition,
+    string? CheapestOfferName)
 {
     /// <summary>The price we track: the cheapest offer in stock, else the cheapest offer at all.</summary>
     public decimal? TrackedPrice => LowestInStock ?? LowestOverall;
@@ -82,6 +85,12 @@ public sealed class PinnedProduct
     public string? CheapestMerchant { get; set; }
     public string? CheapestOfferUrl { get; set; }
     public int OfferCount { get; set; }
+
+    /// <summary>The cheapest offer's labelled condition (USED, REFURBISHED), when it has one other than new.</summary>
+    public string? CheapestCondition { get; set; }
+
+    /// <summary>The cheapest offer's title, when it reads as used although nothing labels it so.</summary>
+    public string? CheapestLooksUsedTitle { get; set; }
 
     /// <summary>PriceRunner's variant group (same product, other colours); null when the product has no variants.</summary>
     public string? GroupKey { get; set; }

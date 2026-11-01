@@ -39,6 +39,10 @@
             </StackPanel>
             <TextBlock Classes="secondary" Text="{Binding Detail}" />
             <TextBlock Classes="secondary" Text="{Binding Description}" Opacity="0.85" />
+            <Border Classes="chip warn" HorizontalAlignment="Left" Margin="0,2,0,0" IsVisible="{Binding HasCondition}"
+                    ToolTip.Tip="PriceRunner lists this as not new">
+              <TextBlock Text="{Binding ConditionText}" />
+            </Border>
             <!-- While a filter is on: this price against the product's past year, next to PriceRunner's own drop on the right. -->
             <Border Classes="chip" Classes.down="{Binding IsGoodDeal}" Classes.warn="{Binding IsInflated}" Classes.up="{Binding IsOverpriced}"
                     HorizontalAlignment="Left" Margin="0,2,0,0" IsVisible="{Binding HasVerdict}" ToolTip.Tip="{Binding VerdictTip}">
@@ -140,6 +144,12 @@
                 <Border Classes="chip" Classes.down="{Binding IsGoodDeal}" Classes.warn="{Binding IsInflated}" Classes.up="{Binding IsOverpriced}"
                         IsVisible="{Binding HasVerdict}" ToolTip.Tip="{Binding VerdictTip}">
                   <TextBlock Text="{Binding VerdictText}" />
+                </Border>
+                <Border Classes="chip warn" IsVisible="{Binding HasCondition}" ToolTip.Tip="The cheapest offer is labelled as not new">
+                  <TextBlock Text="{Binding ConditionText}" />
+                </Border>
+                <Border Classes="chip warn" IsVisible="{Binding LooksUsed}" ToolTip.Tip="{Binding LooksUsedTip}">
+                  <TextBlock Text="⚠ LOOKS USED" />
                 </Border>
                 <!-- What PriceRunner reports, whatever our verdict says: often the discount you'd actually get today. -->
                 <Border Classes="chip" IsVisible="{Binding HasReportedDrop}" ToolTip.Tip="{Binding ReportedDropTip}">
@@ -305,7 +315,8 @@
           <!-- SEARCH -->
           <DockPanel IsVisible="{Binding IsSearchTab}">
             <Panel DockPanel.Dock="Top" Margin="14,0,14,6">
-              <TextBox Name="SearchBox" Classes="search" Text="{Binding Query}" PlaceholderText="Search products, e.g. Sony WH-1000XM6">
+              <TextBox Name="SearchBox" Classes="search" Text="{Binding Query}" PlaceholderText="Search products, e.g. Sony WH-1000XM6"
+                       AutomationProperties.Name="Search products">
                 <TextBox.KeyBindings>
                   <KeyBinding Gesture="Enter" Command="{Binding SearchCommand}" />
                   <KeyBinding Gesture="Escape" Command="{Binding ClearSearchCommand}" />

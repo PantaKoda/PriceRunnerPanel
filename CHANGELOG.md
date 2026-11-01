@@ -2,6 +2,15 @@
 
 What changed in each PriceRunner Panel release. The section for a version becomes its GitHub release notes, which the app shows in its update window, so write for people using the app.
 
+## [0.4.6] - 2026-11-01
+
+### Added
+- **See what's not new:** listings PriceRunner marks as refurbished show a *RENOVERAD* tag (or *BEGAGNAD* for used). The watchlist shows the same for the offer being tracked.
+- **Warning for used items sold as new:** some cheapest offers are used but carry no such label. If the title gives it away ("BEGAGNAD", "Bra skick"), the card says *LOOKS USED*; hover it to see the title.
+
+### Fixed
+- **Pinning a refurbished product** now tracks its price, instead of saying no store offers it.
+
 ## [0.4.5] - 2026-11-01
 
 ### Added

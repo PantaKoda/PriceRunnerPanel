@@ -24,7 +24,7 @@ public sealed partial class PinnedItemViewModel : ObservableObject
         nameof(CheckedText), nameof(HasError), nameof(ErrorText), nameof(History), nameof(DealPosition), nameof(HasStoreLink),
         nameof(TargetHint), nameof(LowestChipText), nameof(Verdict), nameof(HasVerdict), nameof(VerdictText), nameof(VerdictTip),
         nameof(IsGoodDeal), nameof(IsInflated), nameof(IsOverpriced), nameof(InsightText), nameof(HasInsight), nameof(HasReportedDrop),
-        nameof(ReportedDropText), nameof(ReportedDropTip),
+        nameof(ReportedDropText), nameof(ReportedDropTip), nameof(ConditionText), nameof(HasCondition), nameof(LooksUsed), nameof(LooksUsedTip),
     ];
 
     /// <summary>Days of PriceRunner's history the sparkline shows.</summary>
@@ -111,6 +111,15 @@ public sealed partial class PinnedItemViewModel : ObservableObject
     public string VerdictTip => _insight.Explain(Product.Currency);
 
     public string InsightText => _insight.Summary(Product.Currency);
+
+    /// <summary>What the price being tracked is for, when it isn't a new item.</summary>
+    public string? ConditionText => Format.Condition(Product.CheapestCondition);
+
+    public bool HasCondition => ConditionText is not null;
+
+    public bool LooksUsed => Product.CheapestLooksUsedTitle is not null;
+
+    public string LooksUsedTip => $"The cheapest offer may not be new, although nothing labels it as used. Its title: {Product.CheapestLooksUsedTitle}";
 
     /// <summary>The drop PriceRunner itself reports, shown next to our own verdict: both can be true at once.</summary>
     public bool HasReportedDrop => Product.ReportedDropPercent is > 0.5m;

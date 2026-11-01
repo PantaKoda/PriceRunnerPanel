@@ -52,6 +52,8 @@ public sealed class PriceTracker(PriceRunnerClient client, TimeProvider time)
         pin.OfferCount = snapshot.OfferCount;
         pin.CheapestMerchant = snapshot.CheapestMerchant;
         pin.CheapestOfferUrl = snapshot.CheapestOfferUrl;
+        pin.CheapestCondition = Format.Condition(snapshot.CheapestCondition) is null ? null : snapshot.CheapestCondition;
+        pin.CheapestLooksUsedTitle = pin.CheapestCondition is null && Format.LooksUsed(snapshot.CheapestOfferName) ? snapshot.CheapestOfferName : null;
         if (pin.LowestSeen is null || price < pin.LowestSeen)
         {
             pin.LowestSeen = price;

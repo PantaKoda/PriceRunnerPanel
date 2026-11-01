@@ -127,9 +127,21 @@ public sealed class PriceRunnerClient : IDisposable
         return best.ToDictionary(s => s.Key, s => s.Value.Price);
     }
 
+    /// <summary>
+    /// A product's current price from new offers. A refurbished listing has none, so that takes a second request for
+    /// its used and refurbished offers.
+    /// </summary>
     public async Task<PriceSnapshot> GetPriceAsync(string productId, CancellationToken cancellationToken)
     {
-        using var document = await GetJsonAsync(OffersUrl(productId), cancellationToken).ConfigureAwait(false);
+        var snapshot = await ReadPriceAsync(OffersUrl(productId), cancellationToken).ConfigureAwait(false);
+        return snapshot.OfferCount > 0
+            ? snapshot
+            : await ReadPriceAsync(OffersUrl(productId, "USED,REFURBISHED"), cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<PriceSnapshot> ReadPriceAsync(string url, CancellationToken cancellationToken)
+    {
+        using var document = await GetJsonAsync(url, cancellationToken).ConfigureAwait(false);
         var root = document.RootElement;
 
         var merchantNames = new Dictionary<string, string>();
@@ -174,16 +186,20 @@ public sealed class PriceRunnerClient : IDisposable
 
         string? merchant = null;
         string? offerUrl = null;
+        string? condition = null;
+        string? offerName = null;
         if (best is { } chosen)
         {
             offerUrl = Str(chosen.Offer, "url");
+            condition = OfferCondition(chosen.Offer);
+            offerName = Str(chosen.Offer, "name");
             if (Str(chosen.Offer, "merchantId") is { } merchantId)
             {
                 merchantNames.TryGetValue(merchantId, out merchant);
             }
         }
 
-        return new PriceSnapshot(lowestInStock, lowestOverall, currency, count, merchant, offerUrl);
+        return new PriceSnapshot(lowestInStock, lowestOverall, currency, count, merchant, offerUrl, condition, offerName);
     }
 
     /// <summary>
@@ -288,9 +304,21 @@ public sealed class PriceRunnerClient : IDisposable
     private static DateTimeOffset? TryDate(JsonElement element, string name) =>
         DateTimeOffset.TryParse(Str(element, name), CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var date) ? date : null;
 
-    private static string OffersUrl(string productId) =>
+    /// <summary>The condition an offer is labelled with (NEW, USED, REFURBISHED); many offers carry no label.</summary>
+    private static string? OfferCondition(JsonElement offer)
+    {
+        var labels = Obj(offer, "labels");
+        if (labels.ValueKind != JsonValueKind.Object || !labels.TryGetProperty("attributeLabels", out var attributes) || attributes.ValueKind != JsonValueKind.Array)
+        {
+            return null;
+        }
+
+        return attributes.EnumerateArray().Where(a => Str(a, "name") == "itemCondition").Select(a => Str(a, "value")).FirstOrDefault();
+    }
+
+    private static string OffersUrl(string productId, string conditions = "NEW,UNKNOWN") =>
         $"/se/api/product-detail-edge-rest/public/product-detail/v0/offers/{Market}/{Uri.EscapeDataString(productId)}"
-        + "?af_ORIGIN=NATIONAL&af_ITEM_CONDITION=NEW,UNKNOWN&af_STOCK_STATUS=IN_STOCK,BACKORDER,PREORDER,SPECIAL_ORDER,COLLECT_IN_STORE,UNKNOWN";
+        + $"?af_ORIGIN=NATIONAL&af_ITEM_CONDITION={conditions}&af_STOCK_STATUS=IN_STOCK,BACKORDER,PREORDER,SPECIAL_ORDER,COLLECT_IN_STORE,UNKNOWN";
 
     private static string DealFilters(DealFilter filter)
     {
@@ -341,7 +369,8 @@ public sealed class PriceRunnerClient : IDisposable
                 (double?)Dec(rating, "average"),
                 Int(rating, "count"),
                 Int(Obj(p, "previewMerchants"), "count"),
-                p.TryGetProperty("outOfStock", out var outOfStock) && outOfStock.ValueKind == JsonValueKind.True));
+                p.TryGetProperty("outOfStock", out var outOfStock) && outOfStock.ValueKind == JsonValueKind.True,
+                Str(p, "condition")));
         }
 
         return hits;

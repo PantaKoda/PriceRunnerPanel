@@ -99,7 +99,7 @@ Two public JSON endpoints that the pricerunner.se web app itself uses, anonymous
   one lowest price per day for the past year, fetched at most twice a day per product.
 
 The tracked price is the cheapest **in-stock, new** offer (falling back to the cheapest offer when nothing is in
-stock), counting a store's current sale price but not prices only for its members, which matches the price PriceRunner shows. The endpoints are undocumented and may change; a failed check
+stock, and to used and refurbished offers for a listing with no new ones), counting a store's current sale price but not prices only for its members, which matches the price PriceRunner shows. The endpoints are undocumented and may change; a failed check
 shows its error on the card and the next check tries again.
 
 ## Data
