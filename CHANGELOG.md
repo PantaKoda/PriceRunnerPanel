@@ -2,6 +2,11 @@
 
 What changed in each PriceRunner Panel release. The section for a version becomes its GitHub release notes, which the app shows in its update window, so write for people using the app.
 
+## [0.4.5] - 2026-11-01
+
+### Added
+- **Search inside the Black Friday tab:** find text among the deals your filters list, without leaving the tab. Matches appear as they're found. Filters narrow the search, and with a very long list it stops partway and offers *Search more deals*.
+
 ## [0.4.4] - 2026-11-01
 
 ### Added

@@ -33,7 +33,7 @@ A copy built from source works fully but never replaces itself; the update windo
 - **Black Friday** — PriceRunner's current deals, the list on
   [pricerunner.se/c/black-friday](https://www.pricerunner.se/c/black-friday): products at least 10 % below their
   earlier price, newest drops first. Filter by category and store (popular ones first, type to find the rest, tick
-  several), and by the discount PriceRunner reports (type a range or pick 10, 20, 30 or 50 %+). While a filter is on,
+  several), search among those deals, and filter by the discount PriceRunner reports (type a range or pick 10, 20, 30 or 50 %+). While a filter is on,
   each listing also gets the verdict below, fetched one product at a time. Once a filter is on, a separate *Refine these results* box shows the top brands and stores in the results,
   to narrow by brand, store or both. What you picked shows as chips with a cross to remove them. With a store filter on, each listing also
   shows the picked store's price, fetched one product at a time; with several picked, you see which one has it.

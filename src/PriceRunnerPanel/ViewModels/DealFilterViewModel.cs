@@ -172,6 +172,10 @@ public sealed partial class DealFilterViewModel(string title, string placeholder
 
     partial void OnSearchTextChanged(string value) => ApplySearch();
 
+    /// <summary>The choice with exactly this name, if any.</summary>
+    internal DealFilterOptionViewModel? Find(string name) =>
+        _options.FirstOrDefault(o => string.Equals(o.Name, name, StringComparison.CurrentCultureIgnoreCase));
+
     private void UpdateTop()
     {
         var top = _options.Where(o => o.Count > 0).Take(TopCount).ToList();

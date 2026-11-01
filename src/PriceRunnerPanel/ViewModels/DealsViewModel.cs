@@ -31,8 +31,15 @@ public sealed partial class DealsViewModel : ObservableObject, IDisposable
     private CancellationTokenSource? _cts;
     private CancellationTokenSource? _detailsWorker;
     private DateTimeOffset? _loadedAt;
+    /// <summary>A search stops to ask after reading this many deals, or finding this many matches.</summary>
+    private const int ScanLimit = 2000;
+    private const int MatchLimit = 100;
+
     private bool _settingDrop;
     private int _offset;
+    private int _scanned;
+    private DealFilter? _scanFilter;
+    private IReadOnlyList<string> _scanWords = [];
     private int _total;
 
     public DealsViewModel(MainViewModel owner, PriceRunnerClient client)
@@ -86,7 +93,15 @@ public sealed partial class DealsViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     public partial string Status { get; set; } = "";
 
-    public bool CanLoadMore => !IsLoading && Items.Count > 0 && Items.Count < _total;
+    public bool CanLoadMore => !IsLoading && (IsSearching ? _scanned < _total : Items.Count > 0 && Items.Count < _total);
+
+    public string LoadMoreText => IsSearching ? "Search more deals" : "Show more deals";
+
+    /// <summary>Text to find among the deals the filters list.</summary>
+    [ObservableProperty]
+    public partial string SearchText { get; set; } = "";
+
+    private bool IsSearching => SearchText.Trim().Length > 0;
 
     public bool HasFilters => CategoryFilter.HasSelection || MerchantFilter.HasSelection || BrandFilter.HasSelection || DropRange != (DefaultMinDrop, MaxDropLimit);
 
@@ -131,6 +146,12 @@ public sealed partial class DealsViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(CanLoadMore));
         try
         {
+            if (IsSearching)
+            {
+                await ScanAsync(cts);
+                return;
+            }
+
             var offset = _offset + PriceRunnerClient.DealsPageSize;
             var page = await _client.GetDealsAsync(CurrentFilter(), offset, cts.Token);
             if (cts.IsCancellationRequested)
@@ -159,6 +180,94 @@ public sealed partial class DealsViewModel : ObservableObject, IDisposable
                 OnPropertyChanged(nameof(CanLoadMore));
             }
         }
+    }
+
+    [RelayCommand]
+    private void ClearSearch() => SearchText = "";
+
+    partial void OnSearchTextChanged(string value)
+    {
+        OnPropertyChanged(nameof(LoadMoreText));
+        _ = ReloadAsync(debounce: true);
+    }
+
+    /// <summary>
+    /// PriceRunner's deals can't be searched by text, and its product search ignores the deal filters. So a search
+    /// reads through the filtered deals itself, showing matches as it goes, and pauses after a stretch for the user
+    /// to continue: unfiltered there are over 10 000 deals.
+    /// </summary>
+    private async Task ScanAsync(CancellationTokenSource cts)
+    {
+        var filter = _scanFilter ?? CurrentFilter();
+        var stopAt = _scanned + ScanLimit;
+        var matchesAtStart = Items.Count;
+        while (_scanned < _total && _scanned < stopAt && Items.Count - matchesAtStart < MatchLimit)
+        {
+            await Task.Delay(BetweenDetails, cts.Token);
+            var page = await _client.GetDealsAsync(filter, _scanned, cts.Token, PriceRunnerClient.DealsMaxPageSize);
+            if (page.Hits.Count == 0)
+            {
+                _total = _scanned;
+                break;
+            }
+
+            TakeScanned(page);
+        }
+
+        ShowSearchCount();
+    }
+
+    /// <summary>
+    /// What a search reads, and what it looks for there. A list too long to read through is first narrowed by any word
+    /// that is exactly the name of a brand or category: "sony" among 10 000+ deals reads Sony's deals, and finds them all.
+    /// </summary>
+    private (DealFilter Filter, IReadOnlyList<string> Words) PlanSearch(DealFilter filter, int total)
+    {
+        var words = SearchText.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (total <= ScanLimit)
+        {
+            return (filter, words);
+        }
+
+        var left = new List<string>();
+        foreach (var word in words)
+        {
+            if (filter.Brands.Count == 0 && BrandFilter.Find(word) is { } brand)
+            {
+                filter = filter with { Brands = [brand.Id] };
+            }
+            else if (filter.Categories.Count == 0 && CategoryFilter.Find(word) is { } category)
+            {
+                filter = filter with { Categories = [category.Id] };
+            }
+            else
+            {
+                left.Add(word);
+            }
+        }
+
+        return (filter, left);
+    }
+
+    private void TakeScanned(DealsPage page)
+    {
+        _total = page.Total;
+        _scanned += page.Hits.Count;
+        Append(page.Hits.Where(h => _scanWords.All(w => Matches(h, w))));
+        Status = $"Searching…  {Format.Count(Items.Count)} found in {Format.Count(_scanned)} deals";
+    }
+
+    private static bool Matches(SearchHit hit, string word) =>
+        hit.Name.Contains(word, StringComparison.CurrentCultureIgnoreCase)
+        || hit.Description?.Contains(word, StringComparison.CurrentCultureIgnoreCase) == true
+        || hit.Category?.Contains(word, StringComparison.CurrentCultureIgnoreCase) == true;
+
+    private void ShowSearchCount()
+    {
+        var found = Items.Count == 0 ? "No matches" : Items.Count == 1 ? "1 match" : $"{Format.Count(Items.Count)} matches";
+        Status = _scanned >= _total
+            ? $"{found} in all {Format.Count(_scanned)} deals"
+            : $"{found} in the first {Format.Count(_scanned)} of {(_total >= 10000 ? "10 000+" : Format.Count(_total))} deals";
     }
 
     internal void ApplyDropPreset(int min)
@@ -221,7 +330,7 @@ public sealed partial class DealsViewModel : ObservableObject, IDisposable
 
             Status = "Fetching deals…";
             var filter = CurrentFilter();
-            var pageTask = _client.GetDealsAsync(filter, 0, cts.Token);
+            var pageTask = _client.GetDealsAsync(filter, 0, cts.Token, IsSearching ? PriceRunnerClient.DealsMaxPageSize : PriceRunnerClient.DealsPageSize);
             var facetsTask = _client.GetDealFacetsAsync(filter, cts.Token);
             await Task.WhenAll(pageTask, facetsTask);
             if (cts.IsCancellationRequested)
@@ -242,10 +351,25 @@ public sealed partial class DealsViewModel : ObservableObject, IDisposable
 
             Items.Clear();
             _offset = 0;
+            _scanned = 0;
             _total = page.Total;
-            Append(page.Hits);
             _loadedAt = DateTimeOffset.UtcNow;
-            ShowCount();
+            if (IsSearching)
+            {
+                (_scanFilter, _scanWords) = PlanSearch(filter, page.Total);
+                if (_scanFilter != filter)
+                {
+                    page = await _client.GetDealsAsync(_scanFilter, 0, cts.Token, PriceRunnerClient.DealsMaxPageSize);
+                }
+
+                TakeScanned(page);
+                await ScanAsync(cts);
+            }
+            else
+            {
+                Append(page.Hits);
+                ShowCount();
+            }
         }
         catch (OperationCanceledException) when (cts.IsCancellationRequested)
         {
@@ -278,7 +402,7 @@ public sealed partial class DealsViewModel : ObservableObject, IDisposable
                 row.DealStoreText = $"At {string.Join(", ", picked.Select(o => o.Name))}…";
             }
 
-            if (HasFilters)
+            if (HasFilters || IsSearching)
             {
                 _detailsPending.Enqueue((row, picked));
             }

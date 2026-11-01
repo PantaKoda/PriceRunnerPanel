@@ -14,6 +14,9 @@ public sealed class PriceRunnerClient : IDisposable
 {
     public const string Site = "https://www.pricerunner.se";
     public const int DealsPageSize = 32;
+
+    /// <summary>The most deals PriceRunner returns in one request (200 is refused).</summary>
+    public const int DealsMaxPageSize = 100;
     private const string Market = "SE";
     private const string ImageHost = "https://owp.klarna.com";
 
@@ -77,10 +80,10 @@ public sealed class PriceRunnerClient : IDisposable
     /// Current deals: products at least 10 % below their earlier price, newest drops first. This is the list on
     /// pricerunner.se/c/black-friday, which shows PriceRunner's deals all year round.
     /// </summary>
-    public async Task<DealsPage> GetDealsAsync(DealFilter filter, int offset, CancellationToken cancellationToken)
+    public async Task<DealsPage> GetDealsAsync(DealFilter filter, int offset, CancellationToken cancellationToken, int size = DealsPageSize)
     {
         var url = $"/se/api/deals-edge-rest/public/search/deals/products/v3/{Market}?{DealFilters(filter)}"
-            + $"&sorting=LATESTPRICEDROP_DESC,GLOBALRANK_ASC&size={DealsPageSize}&offset={offset}";
+            + $"&sorting=LATESTPRICEDROP_DESC,GLOBALRANK_ASC&size={size}&offset={offset}";
         using var document = await GetJsonAsync(url, cancellationToken).ConfigureAwait(false);
         var root = document.RootElement;
         var hits = root.TryGetProperty("products", out var products) && products.ValueKind == JsonValueKind.Array ? ParseHits(products) : [];

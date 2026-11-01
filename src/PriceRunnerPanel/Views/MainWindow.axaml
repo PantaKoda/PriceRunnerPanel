@@ -331,6 +331,22 @@
 
           <!-- BLACK FRIDAY: PriceRunner's current deals, by category and store. Nothing here is saved. -->
           <DockPanel IsVisible="{Binding IsDealsTab}">
+            <!-- Searches among the deals the filters list, not all of PriceRunner like the Search tab. -->
+            <Panel DockPanel.Dock="Top" Margin="14,0,14,6">
+              <TextBox Classes="search" Text="{Binding Deals.SearchText}" PlaceholderText="Search these deals, e.g. Sony"
+                       AutomationProperties.Name="Search deals">
+                <TextBox.KeyBindings>
+                  <KeyBinding Gesture="Escape" Command="{Binding Deals.ClearSearchCommand}" />
+                </TextBox.KeyBindings>
+              </TextBox>
+              <PathIcon Data="{StaticResource IconSearch}" Width="15" Height="15" Margin="13,0,0,0" HorizontalAlignment="Left"
+                        Foreground="{DynamicResource HudAccentBrush}" IsHitTestVisible="False" />
+              <Button Classes="icon" HorizontalAlignment="Right" Margin="0,0,5,0" Command="{Binding Deals.ClearSearchCommand}"
+                      IsVisible="{Binding Deals.SearchText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                      ToolTip.Tip="Clear (Esc)" AutomationProperties.Name="Clear deal search">
+                <PathIcon Data="{StaticResource IconClear}" />
+              </Button>
+            </Panel>
             <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,Auto,*,Auto,Auto" ColumnSpacing="6" Margin="14,0,14,6">
               <ContentControl Content="{Binding Deals.CategoryFilter}" />
               <ContentControl Grid.Column="1" Content="{Binding Deals.MerchantFilter}" />
@@ -410,7 +426,7 @@
             <ScrollViewer Padding="14,2,14,6">
               <StackPanel>
                 <ItemsControl ItemsSource="{Binding Deals.Items}" />
-                <Button Classes="pill" HorizontalAlignment="Center" Margin="0,2,0,8" Content="Show more deals"
+                <Button Classes="pill" HorizontalAlignment="Center" Margin="0,2,0,8" Content="{Binding Deals.LoadMoreText}"
                         Command="{Binding Deals.LoadMoreCommand}" IsVisible="{Binding Deals.CanLoadMore}" />
               </StackPanel>
             </ScrollViewer>
