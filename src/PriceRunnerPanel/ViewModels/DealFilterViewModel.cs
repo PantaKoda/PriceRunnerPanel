@@ -18,14 +18,21 @@ public sealed partial class DealFilterOptionViewModel(DealFilterViewModel owner,
 
     public string CountText => Format.Count(Count);
 
+    public bool IsStore => owner.IsStore;
+
+    public bool IsCategory => !owner.IsStore;
+
     [ObservableProperty]
     public partial bool IsSelected { get; set; }
+
+    [RelayCommand]
+    private void Remove() => IsSelected = false;
 
     partial void OnIsSelectedChanged(bool value) => owner.OnOptionToggled();
 }
 
 /// <summary>A deals filter (category or store): a typed search over hundreds of choices, several can be ticked.</summary>
-public sealed partial class DealFilterViewModel(string title, string placeholder) : ObservableObject
+public sealed partial class DealFilterViewModel(string title, string placeholder, bool isStore) : ObservableObject
 {
     private Dictionary<int, DealFilterOptionViewModel> _known = [];
     private List<DealFilterOptionViewModel> _options = [];
@@ -42,7 +49,11 @@ public sealed partial class DealFilterViewModel(string title, string placeholder
     [ObservableProperty]
     public partial string SearchText { get; set; } = "";
 
-    public IReadOnlyList<int> SelectedIds => [.. _known.Values.Where(o => o.IsSelected).Select(o => o.Id)];
+    public bool IsStore { get; } = isStore;
+
+    public IReadOnlyList<DealFilterOptionViewModel> Selected => [.. _known.Values.Where(o => o.IsSelected)];
+
+    public IReadOnlyList<int> SelectedIds => [.. Selected.Select(o => o.Id)];
 
     public bool HasSelection => _known.Values.Any(o => o.IsSelected);
 

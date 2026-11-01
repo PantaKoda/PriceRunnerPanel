@@ -16,9 +16,14 @@ public sealed partial class DealsViewModel : ObservableObject, IDisposable
     /// <summary>Deals change through the day: reopening the tab after this long fetches them again.</summary>
     private static readonly TimeSpan Stale = TimeSpan.FromMinutes(30);
 
+    /// <summary>Pause between products when fetching store prices, to stay a polite client.</summary>
+    private static readonly TimeSpan BetweenStorePrices = TimeSpan.FromMilliseconds(300);
+
     private readonly MainViewModel _owner;
     private readonly PriceRunnerClient _client;
+    private readonly Queue<(SearchResultViewModel Row, IReadOnlyList<DealFilterOptionViewModel> Picked)> _storePricesPending = new();
     private CancellationTokenSource? _cts;
+    private CancellationTokenSource? _storePricesWorker;
     private DateTimeOffset? _loadedAt;
     private int _offset;
     private int _total;
@@ -31,9 +36,12 @@ public sealed partial class DealsViewModel : ObservableObject, IDisposable
         MerchantFilter.SelectionChanged += (_, _) => OnFiltersChanged();
     }
 
-    public DealFilterViewModel CategoryFilter { get; } = new("Category", "Find a category");
+    public DealFilterViewModel CategoryFilter { get; } = new("Category", "Find a category", isStore: false);
 
-    public DealFilterViewModel MerchantFilter { get; } = new("Store", "Find a store");
+    public DealFilterViewModel MerchantFilter { get; } = new("Store", "Find a store", isStore: true);
+
+    /// <summary>Everything ticked in either filter, shown as chips that remove it.</summary>
+    public ObservableCollection<DealFilterOptionViewModel> ActiveFilters { get; } = [];
 
     public ObservableCollection<SearchResultViewModel> Items { get; } = [];
 
@@ -70,7 +78,7 @@ public sealed partial class DealsViewModel : ObservableObject, IDisposable
     {
         CategoryFilter.ClearSilently();
         MerchantFilter.ClearSilently();
-        OnPropertyChanged(nameof(HasFilters));
+        UpdateActiveFilters();
         return ReloadAsync(debounce: false);
     }
 
@@ -118,7 +126,7 @@ public sealed partial class DealsViewModel : ObservableObject, IDisposable
 
     private void OnFiltersChanged()
     {
-        OnPropertyChanged(nameof(HasFilters));
+        UpdateActiveFilters();
         _ = ReloadAsync(debounce: true);
     }
 
@@ -127,6 +135,7 @@ public sealed partial class DealsViewModel : ObservableObject, IDisposable
         _cts?.Cancel();
         _cts?.Dispose();
         var cts = _cts = new CancellationTokenSource();
+        _storePricesPending.Clear();
         try
         {
             IsLoading = true;
@@ -185,10 +194,73 @@ public sealed partial class DealsViewModel : ObservableObject, IDisposable
     private void Append(IEnumerable<Models.SearchHit> hits)
     {
         var shown = Items.Select(r => r.Hit.Id).ToHashSet();
+        var picked = MerchantFilter.Selected;
         foreach (var hit in hits.Where(h => shown.Add(h.Id)))
         {
-            Items.Add(_owner.CreateResultRow(hit));
+            var row = _owner.CreateResultRow(hit);
+            Items.Add(row);
+            if (picked.Count > 0)
+            {
+                row.DealStoreText = $"At {string.Join(", ", picked.Select(o => o.Name))}…";
+                _storePricesPending.Enqueue((row, picked));
+            }
         }
+
+        if (_storePricesPending.Count > 0 && _cts is { } cts && _storePricesWorker != cts)
+        {
+            _ = LoadStorePricesAsync(cts);
+        }
+    }
+
+    /// <summary>
+    /// A store filter finds products that store sells, but the listed price is the lowest at any store: Elgiganten can
+    /// sell at 5 879 kr what another store sells at 3 999 kr. So each listing asks for the picked stores' own prices,
+    /// one product at a time with a pause, and only while a store filter is on.
+    /// </summary>
+    private async Task LoadStorePricesAsync(CancellationTokenSource cts)
+    {
+        _storePricesWorker = cts;
+        try
+        {
+            while (!cts.IsCancellationRequested && _storePricesPending.TryDequeue(out var next))
+            {
+                var (row, picked) = next;
+                try
+                {
+                    var prices = await _client.GetStorePricesAsync(row.Hit.Id, cts.Token);
+                    row.ShowStorePrice(picked, prices);
+                }
+                catch (Exception ex) when (IsFetchFailure(ex) && !cts.IsCancellationRequested)
+                {
+                    row.DealStoreText = $"At {string.Join(", ", picked.Select(o => o.Name))}";
+                    row.DealStoreTip = "Couldn't fetch this store's own price";
+                }
+
+                await Task.Delay(BetweenStorePrices, cts.Token);
+            }
+        }
+        catch (OperationCanceledException) when (cts.IsCancellationRequested)
+        {
+            // The filters changed; the rows this was for are gone.
+        }
+        finally
+        {
+            if (_storePricesWorker == cts)
+            {
+                _storePricesWorker = null;
+            }
+        }
+    }
+
+    private void UpdateActiveFilters()
+    {
+        ActiveFilters.Clear();
+        foreach (var option in CategoryFilter.Selected.Concat(MerchantFilter.Selected))
+        {
+            ActiveFilters.Add(option);
+        }
+
+        OnPropertyChanged(nameof(HasFilters));
     }
 
     private void ShowCount()

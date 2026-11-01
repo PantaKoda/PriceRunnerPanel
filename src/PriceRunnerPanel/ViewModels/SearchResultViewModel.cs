@@ -58,6 +58,35 @@ public sealed partial class SearchResultViewModel : ObservableObject
 
     public string RecentDropText => Hit.RecentDropPercent is { } percent ? $"▼ {Format.Percent(percent)}" : "";
 
+    /// <summary>On a deal filtered by store: the picked store and its own price, e.g. "At CDON: 749 kr (lowest)".</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasDealStore))]
+    public partial string? DealStoreText { get; set; }
+
+    public bool HasDealStore => DealStoreText is not null;
+
+    [ObservableProperty]
+    public partial string DealStoreTip { get; set; } = "";
+
+    /// <summary>Shows what the store filter found: its cheapest picked store, or that none of them offers it.</summary>
+    public void ShowStorePrice(IReadOnlyList<DealFilterOptionViewModel> picked, IReadOnlyDictionary<int, decimal> prices)
+    {
+        var best = picked.Where(o => prices.ContainsKey(o.Id)).Select(o => (o.Name, Price: prices[o.Id])).OrderBy(s => s.Price).ToList();
+        if (best.Count == 0)
+        {
+            DealStoreText = $"No new offer at {string.Join(", ", picked.Select(o => o.Name))}";
+            DealStoreTip = "PriceRunner lists no new item from Swedish stores for what you picked right now";
+            return;
+        }
+
+        var (name, price) = best[0];
+        var isLowest = Hit.LowestPrice is not { } lowest || price <= lowest;
+        DealStoreText = $"At {name}: {Format.Price(price, Hit.Currency)}{(isLowest ? " (lowest)" : "")}";
+        DealStoreTip = isLowest
+            ? "This store has the lowest price on PriceRunner"
+            : $"This store's own price. The {PriceText} on the right is the lowest price at any store.";
+    }
+
     public bool HasOldPrice => HasRecentDrop && Hit.OldPrice is not null;
 
     public string OldPriceText => Format.Price(Hit.OldPrice, Hit.Currency);

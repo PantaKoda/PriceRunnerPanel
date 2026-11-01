@@ -32,6 +32,10 @@
             <Button Classes="link" Command="{Binding OpenCommand}" ToolTip.Tip="Open on PriceRunner">
               <TextBlock Classes="title" Text="{Binding Name}" />
             </Button>
+            <StackPanel Orientation="Horizontal" Spacing="4" IsVisible="{Binding HasDealStore}" ToolTip.Tip="{Binding DealStoreTip}">
+              <PathIcon Data="{StaticResource IconStore}" Width="11" Height="11" Foreground="{DynamicResource HudAccentBrush}" VerticalAlignment="Center" />
+              <TextBlock Classes="secondary" Text="{Binding DealStoreText}" Foreground="{DynamicResource HudAccentBrush}" FontWeight="SemiBold" VerticalAlignment="Center" />
+            </StackPanel>
             <TextBlock Classes="secondary" Text="{Binding Detail}" />
             <TextBlock Classes="secondary" Text="{Binding Description}" Opacity="0.85" />
           </StackPanel>
@@ -322,6 +326,31 @@
                 <PathIcon Data="{StaticResource IconRefresh}" />
               </Button>
             </Grid>
+            <!-- What's picked, each with a cross to remove it. -->
+            <ItemsControl DockPanel.Dock="Top" ItemsSource="{Binding Deals.ActiveFilters}" IsVisible="{Binding Deals.HasFilters}" Margin="14,0,14,6">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <WrapPanel ItemSpacing="4" LineSpacing="4" />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:DealFilterOptionViewModel">
+                  <Border Classes="chip variant" Padding="7,2,3,2">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                      <PathIcon Data="{StaticResource IconStore}" Width="10" Height="10" Foreground="{DynamicResource HudAccentBrush}"
+                                IsVisible="{Binding IsStore}" VerticalAlignment="Center" ToolTip.Tip="Store" />
+                      <PathIcon Data="{StaticResource IconLayers}" Width="10" Height="10" Foreground="{DynamicResource HudAccentBrush}"
+                                IsVisible="{Binding IsCategory}" VerticalAlignment="Center" ToolTip.Tip="Category" />
+                      <TextBlock Text="{Binding Name}" MaxWidth="150" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                      <Button Classes="chipRemove" Command="{Binding RemoveCommand}" ToolTip.Tip="Remove this filter"
+                              AutomationProperties.Name="{Binding Name, StringFormat='Remove {0}'}">
+                        <PathIcon Data="{StaticResource IconClear}" Width="9" Height="9" />
+                      </Button>
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
             <StackPanel DockPanel.Dock="Top" Margin="18,0,18,6" Spacing="4">
               <TextBlock Classes="secondary" Text="{Binding Deals.Status}" />
               <ProgressBar Classes="scan" IsVisible="{Binding Deals.IsLoading}" />

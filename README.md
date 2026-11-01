@@ -33,7 +33,9 @@ A copy built from source works fully but never replaces itself; the update windo
 - **Black Friday** — PriceRunner's current deals, the list on
   [pricerunner.se/c/black-friday](https://www.pricerunner.se/c/black-friday): products at least 10 % below their
   earlier price, newest drops first. Filter by category and store (popular ones first, type to find the rest, tick
-  several). **PIN** adds a deal to the watchlist, whose verdict shows whether the discount is real. Deals are fetched
+  several). What you picked shows as chips with a cross to remove them. With a store filter on, each listing also
+  shows the picked store's own price, fetched one product at a time, since the main price is the lowest at any store.
+  **PIN** adds a deal to the watchlist, whose verdict shows whether the discount is real. Deals are fetched
   when the tab opens and aren't saved; their thumbnails are cleared at the next start.
 - **Watchlist** — every pinned product shows its current lowest price, the change since you pinned it, its price
   history, and a meter of where today's price sits between the lowest and highest seen. The card glows green at

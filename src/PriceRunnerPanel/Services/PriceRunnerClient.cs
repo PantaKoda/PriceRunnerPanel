@@ -99,11 +99,34 @@ public sealed class PriceRunnerClient : IDisposable
         return new DealFacets(ParseFacet(Obj(facets, "CATEGORY")), ParseFacet(Obj(facets, "MERCHANT_DEAL")));
     }
 
+    /// <summary>What each store asks for a product (new, Swedish stores): its cheapest offer in stock, else its cheapest.</summary>
+    public async Task<IReadOnlyDictionary<int, decimal>> GetStorePricesAsync(string productId, CancellationToken cancellationToken)
+    {
+        using var document = await GetJsonAsync(OffersUrl(productId), cancellationToken).ConfigureAwait(false);
+        var best = new Dictionary<int, (decimal Price, bool InStock)>();
+        if (document.RootElement.TryGetProperty("offers", out var offers) && offers.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var offer in offers.EnumerateArray())
+            {
+                if (Money(offer, "price") is not { } price || !int.TryParse(Str(offer, "merchantId"), out var store))
+                {
+                    continue;
+                }
+
+                var inStock = Str(offer, "stockStatus") == "IN_STOCK";
+                if (!best.TryGetValue(store, out var current) || (inStock && !current.InStock) || (inStock == current.InStock && price.Amount < current.Price))
+                {
+                    best[store] = (price.Amount, inStock);
+                }
+            }
+        }
+
+        return best.ToDictionary(s => s.Key, s => s.Value.Price);
+    }
+
     public async Task<PriceSnapshot> GetPriceAsync(string productId, CancellationToken cancellationToken)
     {
-        var url = $"/se/api/product-detail-edge-rest/public/product-detail/v0/offers/{Market}/{Uri.EscapeDataString(productId)}"
-            + "?af_ORIGIN=NATIONAL&af_ITEM_CONDITION=NEW,UNKNOWN&af_STOCK_STATUS=IN_STOCK,BACKORDER,PREORDER,SPECIAL_ORDER,COLLECT_IN_STORE,UNKNOWN";
-        using var document = await GetJsonAsync(url, cancellationToken).ConfigureAwait(false);
+        using var document = await GetJsonAsync(OffersUrl(productId), cancellationToken).ConfigureAwait(false);
         var root = document.RootElement;
 
         var merchantNames = new Dictionary<string, string>();
@@ -237,6 +260,10 @@ public sealed class PriceRunnerClient : IDisposable
     }
 
     public void Dispose() => _http.Dispose();
+
+    private static string OffersUrl(string productId) =>
+        $"/se/api/product-detail-edge-rest/public/product-detail/v0/offers/{Market}/{Uri.EscapeDataString(productId)}"
+        + "?af_ORIGIN=NATIONAL&af_ITEM_CONDITION=NEW,UNKNOWN&af_STOCK_STATUS=IN_STOCK,BACKORDER,PREORDER,SPECIAL_ORDER,COLLECT_IN_STORE,UNKNOWN";
 
     private static string DealFilters(IReadOnlyCollection<int> categories, IReadOnlyCollection<int> merchants)
     {

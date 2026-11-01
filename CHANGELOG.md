@@ -2,6 +2,12 @@
 
 What changed in each PriceRunner Panel release. The section for a version becomes its GitHub release notes, which the app shows in its update window, so write for people using the app.
 
+## [0.4.2] - 2026-11-01
+
+### Added
+- **See what you picked on the Black Friday tab:** every category and store you tick shows as a chip with a cross to remove it.
+- **The store's own price on each deal:** with a store filter on, each listing shows what that store asks, e.g. *At Elgiganten: 5 879 kr*. The big price is still the lowest at any store, which can be a different store.
+
 ## [0.4.1] - 2026-11-01
 
 ### Added
