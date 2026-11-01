@@ -6,7 +6,7 @@ using PriceRunnerPanel.Services;
 namespace PriceRunnerPanel.ViewModels;
 
 /// <summary>
-/// The Black Friday tab: PriceRunner's current deals, filtered by category and store. Nothing here is saved; deals
+/// The Black Friday tab: PriceRunner's current deals, filtered by category, store and brand. Nothing here is saved; deals
 /// are fetched when the tab opens and live in memory until a product is pinned to the watchlist.
 /// </summary>
 public sealed partial class DealsViewModel : ObservableObject, IDisposable
@@ -34,11 +34,18 @@ public sealed partial class DealsViewModel : ObservableObject, IDisposable
         _client = client;
         CategoryFilter.SelectionChanged += (_, _) => OnFiltersChanged();
         MerchantFilter.SelectionChanged += (_, _) => OnFiltersChanged();
+        BrandFilter.SelectionChanged += (_, _) => OnFiltersChanged();
     }
 
-    public DealFilterViewModel CategoryFilter { get; } = new("Category", "Find a category", isStore: false);
+    public DealFilterViewModel CategoryFilter { get; } = new("Category", "Find a category", DealFilterKind.Category);
 
-    public DealFilterViewModel MerchantFilter { get; } = new("Store", "Find a store", isStore: true);
+    public DealFilterViewModel MerchantFilter { get; } = new("Store", "Find a store", DealFilterKind.Store);
+
+    public DealFilterViewModel BrandFilter { get; } = new("Brand", "Find a brand", DealFilterKind.Brand);
+
+    public DealRefineRow BrandRow => new("Brands", BrandFilter);
+
+    public DealRefineRow StoreRow => new("Stores", MerchantFilter);
 
     /// <summary>Everything ticked in either filter, shown as chips that remove it.</summary>
     public ObservableCollection<DealFilterOptionViewModel> ActiveFilters { get; } = [];
@@ -53,7 +60,7 @@ public sealed partial class DealsViewModel : ObservableObject, IDisposable
 
     public bool CanLoadMore => !IsLoading && Items.Count > 0 && Items.Count < _total;
 
-    public bool HasFilters => CategoryFilter.HasSelection || MerchantFilter.HasSelection;
+    public bool HasFilters => CategoryFilter.HasSelection || MerchantFilter.HasSelection || BrandFilter.HasSelection;
 
     /// <summary>The tab was opened: fetches the deals the first time, and again when they have gone stale.</summary>
     public void OnOpened()
@@ -78,6 +85,7 @@ public sealed partial class DealsViewModel : ObservableObject, IDisposable
     {
         CategoryFilter.ClearSilently();
         MerchantFilter.ClearSilently();
+        BrandFilter.ClearSilently();
         UpdateActiveFilters();
         return ReloadAsync(debounce: false);
     }
@@ -95,7 +103,7 @@ public sealed partial class DealsViewModel : ObservableObject, IDisposable
         try
         {
             var offset = _offset + PriceRunnerClient.DealsPageSize;
-            var page = await _client.GetDealsAsync(CategoryFilter.SelectedIds, MerchantFilter.SelectedIds, offset, cts.Token);
+            var page = await _client.GetDealsAsync(CategoryFilter.SelectedIds, MerchantFilter.SelectedIds, BrandFilter.SelectedIds, offset, cts.Token);
             if (cts.IsCancellationRequested)
             {
                 return;
@@ -148,8 +156,9 @@ public sealed partial class DealsViewModel : ObservableObject, IDisposable
             Status = "Fetching deals…";
             var categories = CategoryFilter.SelectedIds;
             var merchants = MerchantFilter.SelectedIds;
-            var pageTask = _client.GetDealsAsync(categories, merchants, 0, cts.Token);
-            var facetsTask = _client.GetDealFacetsAsync(categories, merchants, cts.Token);
+            var brands = BrandFilter.SelectedIds;
+            var pageTask = _client.GetDealsAsync(categories, merchants, brands, 0, cts.Token);
+            var facetsTask = _client.GetDealFacetsAsync(categories, merchants, brands, cts.Token);
             await Task.WhenAll(pageTask, facetsTask);
             if (cts.IsCancellationRequested)
             {
@@ -160,6 +169,7 @@ public sealed partial class DealsViewModel : ObservableObject, IDisposable
             var facets = await facetsTask;
             CategoryFilter.SetOptions(facets.Categories);
             MerchantFilter.SetOptions(facets.Merchants);
+            BrandFilter.SetOptions(facets.Brands);
 
             foreach (var row in Items)
             {
@@ -255,7 +265,7 @@ public sealed partial class DealsViewModel : ObservableObject, IDisposable
     private void UpdateActiveFilters()
     {
         ActiveFilters.Clear();
-        foreach (var option in CategoryFilter.Selected.Concat(MerchantFilter.Selected))
+        foreach (var option in CategoryFilter.Selected.Concat(MerchantFilter.Selected).Concat(BrandFilter.Selected))
         {
             ActiveFilters.Add(option);
         }

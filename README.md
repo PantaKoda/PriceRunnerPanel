@@ -33,7 +33,8 @@ A copy built from source works fully but never replaces itself; the update windo
 - **Black Friday** — PriceRunner's current deals, the list on
   [pricerunner.se/c/black-friday](https://www.pricerunner.se/c/black-friday): products at least 10 % below their
   earlier price, newest drops first. Filter by category and store (popular ones first, type to find the rest, tick
-  several). What you picked shows as chips with a cross to remove them. With a store filter on, each listing also
+  several). Once a filter is on, a separate *Refine these results* box shows the top brands and stores in the results,
+  to narrow by brand, store or both. What you picked shows as chips with a cross to remove them. With a store filter on, each listing also
   shows the picked store's own price, fetched one product at a time, since the main price is the lowest at any store.
   **PIN** adds a deal to the watchlist, whose verdict shows whether the discount is real. Deals are fetched
   when the tab opens and aren't saved; their thumbnails are cleared at the next start.
@@ -91,7 +92,7 @@ Two public JSON endpoints that the pricerunner.se web app itself uses, anonymous
 - offers of one product: `/se/api/product-detail-edge-rest/public/product-detail/v0/offers/SE/{id}` filtered to new
   items from Swedish stores.
 - deals and their filters: `/se/api/deals-edge-rest/public/search/deals/products/v3/SE` and `…/deals/facets/SE`, with
-  `af_PRICE_DROP=-90_-10`, `af_CATEGORY` and `af_MERCHANT_DEAL`. Only fetched while the Black Friday tab is used.
+  `af_PRICE_DROP=-90_-10`, `af_CATEGORY`, `af_MERCHANT_DEAL` and `af_BRAND`. Only fetched while the Black Friday tab is used.
 - price history of one product (the product page's *Prisutveckling* tab):
   `/se/api/product-information-edge-rest/public/pricehistory/product/{id}/SE/DAY?selectedInterval=ONE_YEAR&filter=NATIONAL`,
   one lowest price per day for the past year, fetched at most twice a day per product.

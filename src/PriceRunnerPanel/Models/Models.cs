@@ -24,7 +24,7 @@ public sealed record DealsPage(int Total, IReadOnlyList<SearchHit> Hits);
 public sealed record DealFacetOption(int Id, string Name, int Count);
 
 /// <summary>What the deals can be filtered by, most popular first.</summary>
-public sealed record DealFacets(IReadOnlyList<DealFacetOption> Categories, IReadOnlyList<DealFacetOption> Merchants);
+public sealed record DealFacets(IReadOnlyList<DealFacetOption> Categories, IReadOnlyList<DealFacetOption> Merchants, IReadOnlyList<DealFacetOption> Brands);
 
 /// <summary>The current offers for one product: what it costs right now and where.</summary>
 public sealed record PriceSnapshot(

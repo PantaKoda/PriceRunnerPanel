@@ -2,6 +2,11 @@
 
 What changed in each PriceRunner Panel release. The section for a version becomes its GitHub release notes, which the app shows in its update window, so write for people using the app.
 
+## [0.4.3] - 2026-11-01
+
+### Added
+- **Refine deals by brand and store:** once a filter is on, a separate box on the Black Friday tab shows the brands and stores in the results. Pick brands, stores or both to narrow the list; *More* opens the full list with a search box.
+
 ## [0.4.2] - 2026-11-01
 
 ### Added

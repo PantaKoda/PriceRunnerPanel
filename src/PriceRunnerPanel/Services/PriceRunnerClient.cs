@@ -77,9 +77,9 @@ public sealed class PriceRunnerClient : IDisposable
     /// Current deals: products at least 10 % below their earlier price, newest drops first. This is the list on
     /// pricerunner.se/c/black-friday, which shows PriceRunner's deals all year round.
     /// </summary>
-    public async Task<DealsPage> GetDealsAsync(IReadOnlyCollection<int> categories, IReadOnlyCollection<int> merchants, int offset, CancellationToken cancellationToken)
+    public async Task<DealsPage> GetDealsAsync(IReadOnlyCollection<int> categories, IReadOnlyCollection<int> merchants, IReadOnlyCollection<int> brands, int offset, CancellationToken cancellationToken)
     {
-        var url = $"/se/api/deals-edge-rest/public/search/deals/products/v3/{Market}?{DealFilters(categories, merchants)}"
+        var url = $"/se/api/deals-edge-rest/public/search/deals/products/v3/{Market}?{DealFilters(categories, merchants, brands)}"
             + $"&sorting=LATESTPRICEDROP_DESC,GLOBALRANK_ASC&size={DealsPageSize}&offset={offset}";
         using var document = await GetJsonAsync(url, cancellationToken).ConfigureAwait(false);
         var root = document.RootElement;
@@ -88,15 +88,15 @@ public sealed class PriceRunnerClient : IDisposable
     }
 
     /// <summary>
-    /// The filter choices for the deals. PriceRunner narrows each filter by the other one's selection (the stores
+    /// The filter choices for the deals. PriceRunner narrows each filter by the others' selections (the stores
     /// that have deals in the chosen categories), and lists the popular choices separately from the rest.
     /// </summary>
-    public async Task<DealFacets> GetDealFacetsAsync(IReadOnlyCollection<int> categories, IReadOnlyCollection<int> merchants, CancellationToken cancellationToken)
+    public async Task<DealFacets> GetDealFacetsAsync(IReadOnlyCollection<int> categories, IReadOnlyCollection<int> merchants, IReadOnlyCollection<int> brands, CancellationToken cancellationToken)
     {
-        var url = $"/se/api/deals-edge-rest/public/search/deals/facets/{Market}?{DealFilters(categories, merchants)}&size={DealsPageSize}";
+        var url = $"/se/api/deals-edge-rest/public/search/deals/facets/{Market}?{DealFilters(categories, merchants, brands)}&size={DealsPageSize}";
         using var document = await GetJsonAsync(url, cancellationToken).ConfigureAwait(false);
         var facets = Obj(document.RootElement, "facets");
-        return new DealFacets(ParseFacet(Obj(facets, "CATEGORY")), ParseFacet(Obj(facets, "MERCHANT_DEAL")));
+        return new DealFacets(ParseFacet(Obj(facets, "CATEGORY")), ParseFacet(Obj(facets, "MERCHANT_DEAL")), ParseFacet(Obj(facets, "BRAND")));
     }
 
     /// <summary>What each store asks for a product (new, Swedish stores): its cheapest offer in stock, else its cheapest.</summary>
@@ -265,7 +265,7 @@ public sealed class PriceRunnerClient : IDisposable
         $"/se/api/product-detail-edge-rest/public/product-detail/v0/offers/{Market}/{Uri.EscapeDataString(productId)}"
         + "?af_ORIGIN=NATIONAL&af_ITEM_CONDITION=NEW,UNKNOWN&af_STOCK_STATUS=IN_STOCK,BACKORDER,PREORDER,SPECIAL_ORDER,COLLECT_IN_STORE,UNKNOWN";
 
-    private static string DealFilters(IReadOnlyCollection<int> categories, IReadOnlyCollection<int> merchants)
+    private static string DealFilters(IReadOnlyCollection<int> categories, IReadOnlyCollection<int> merchants, IReadOnlyCollection<int> brands)
     {
         var filters = "af_PRICE_DROP=-90_-10";
         if (categories.Count > 0)
@@ -276,6 +276,11 @@ public sealed class PriceRunnerClient : IDisposable
         if (merchants.Count > 0)
         {
             filters += $"&af_MERCHANT_DEAL={string.Join(',', merchants)}";
+        }
+
+        if (brands.Count > 0)
+        {
+            filters += $"&af_BRAND={string.Join(',', brands)}";
         }
 
         return filters;

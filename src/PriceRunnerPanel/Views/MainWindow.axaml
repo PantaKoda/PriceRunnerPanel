@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:PriceRunnerPanel.ViewModels"
         xmlns:c="using:PriceRunnerPanel.Controls"
+        xmlns:v="using:PriceRunnerPanel.Views"
         x:Class="PriceRunnerPanel.Views.MainWindow"
         x:DataType="vm:MainViewModel"
         Title="PriceRunner Panel"
@@ -59,6 +60,39 @@
       </Border>
     </DataTemplate>
 
+    <!-- A row of the refine box: the top choices as toggles, and the full list behind "More". -->
+    <DataTemplate x:DataType="vm:DealRefineRow">
+      <Grid ColumnDefinitions="46,*,Auto">
+        <TextBlock Classes="secondary" Text="{Binding Title}" FontWeight="SemiBold" VerticalAlignment="Top" Margin="0,4,0,0" />
+          <ItemsControl Grid.Column="1" ItemsSource="{Binding Filter.Top}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <WrapPanel ItemSpacing="4" LineSpacing="4" />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:DealFilterOptionViewModel">
+                <ToggleButton Classes="refine" IsChecked="{Binding IsSelected}" AutomationProperties.Name="{Binding Name}">
+                  <StackPanel Orientation="Horizontal" Spacing="4">
+                    <TextBlock Text="{Binding Name}" MaxWidth="100" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding CountText}" Opacity="0.65" VerticalAlignment="Center" />
+                  </StackPanel>
+                </ToggleButton>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <Button Grid.Column="2" Classes="link" DataContext="{Binding Filter}" VerticalAlignment="Top" Margin="6,4,0,0"
+                  AutomationProperties.Name="{Binding Placeholder, StringFormat='{}{0} (all)'}">
+            <TextBlock Classes="secondary" Text="More ▾" Foreground="{DynamicResource HudAccentBrush}" />
+            <Button.Flyout>
+              <Flyout Placement="BottomEdgeAlignedLeft">
+                <v:DealFilterList />
+              </Flyout>
+            </Button.Flyout>
+          </Button>
+      </Grid>
+    </DataTemplate>
+
     <!-- A deals filter: a button that opens a searchable list of checkboxes. -->
     <DataTemplate x:DataType="vm:DealFilterViewModel">
       <Button Classes="pill" Classes.active="{Binding HasSelection}" AutomationProperties.Name="{Binding Placeholder}">
@@ -68,34 +102,7 @@
         </StackPanel>
         <Button.Flyout>
           <Flyout Placement="BottomEdgeAlignedLeft">
-            <DockPanel Width="270" Height="360">
-              <TextBox DockPanel.Dock="Top" Text="{Binding SearchText}" PlaceholderText="{Binding Placeholder}" Margin="0,0,0,6"
-                       AutomationProperties.Name="{Binding Placeholder, StringFormat='{}{0} (search)'}" />
-              <Button DockPanel.Dock="Bottom" Classes="link" Command="{Binding ClearCommand}" IsVisible="{Binding HasSelection}" Margin="2,6,0,0"
-                      AutomationProperties.Name="Clear this filter">
-                <TextBlock Classes="secondary" Text="Clear this filter" Foreground="{DynamicResource HudAccentBrush}" />
-              </Button>
-              <!-- Up to 1000 choices: ListBox only creates the rows on screen. -->
-              <ListBox ItemsSource="{Binding Visible}" Background="Transparent">
-                <ListBox.Styles>
-                  <Style Selector="ListBoxItem">
-                    <Setter Property="Padding" Value="4,0,16,0" />
-                    <Setter Property="MinHeight" Value="0" />
-                  </Style>
-                </ListBox.Styles>
-                <ListBox.ItemTemplate>
-                  <DataTemplate x:DataType="vm:DealFilterOptionViewModel">
-                    <CheckBox IsChecked="{Binding IsSelected}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" MinHeight="28"
-                              AutomationProperties.Name="{Binding Name}">
-                      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                        <TextBlock Text="{Binding Name}" FontSize="12.5" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-                        <TextBlock Grid.Column="1" Classes="secondary" Text="{Binding CountText}" VerticalAlignment="Center" />
-                      </Grid>
-                    </CheckBox>
-                  </DataTemplate>
-                </ListBox.ItemTemplate>
-              </ListBox>
-            </DockPanel>
+            <v:DealFilterList />
           </Flyout>
         </Button.Flyout>
       </Button>
@@ -341,6 +348,8 @@
                                 IsVisible="{Binding IsStore}" VerticalAlignment="Center" ToolTip.Tip="Store" />
                       <PathIcon Data="{StaticResource IconLayers}" Width="10" Height="10" Foreground="{DynamicResource HudAccentBrush}"
                                 IsVisible="{Binding IsCategory}" VerticalAlignment="Center" ToolTip.Tip="Category" />
+                      <PathIcon Data="{StaticResource IconBrand}" Width="10" Height="10" Foreground="{DynamicResource HudAccentBrush}"
+                                IsVisible="{Binding IsBrand}" VerticalAlignment="Center" ToolTip.Tip="Brand" />
                       <TextBlock Text="{Binding Name}" MaxWidth="150" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
                       <Button Classes="chipRemove" Command="{Binding RemoveCommand}" ToolTip.Tip="Remove this filter"
                               AutomationProperties.Name="{Binding Name, StringFormat='Remove {0}'}">
@@ -351,6 +360,14 @@
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
+            <!-- Second step, set apart from the filters above: narrow what's listed by brand and store, alone or together. -->
+            <Border DockPanel.Dock="Top" Classes="refine" IsVisible="{Binding Deals.HasFilters}">
+              <StackPanel Spacing="6">
+                <TextBlock Classes="hud" Text="REFINE THESE RESULTS" FontSize="9.5" />
+                <ContentControl Content="{Binding Deals.BrandRow}" />
+                <ContentControl Content="{Binding Deals.StoreRow}" />
+              </StackPanel>
+            </Border>
             <StackPanel DockPanel.Dock="Top" Margin="18,0,18,6" Spacing="4">
               <TextBlock Classes="secondary" Text="{Binding Deals.Status}" />
               <ProgressBar Classes="scan" IsVisible="{Binding Deals.IsLoading}" />

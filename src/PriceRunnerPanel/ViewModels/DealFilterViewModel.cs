@@ -5,6 +5,16 @@ using PriceRunnerPanel.Services;
 
 namespace PriceRunnerPanel.ViewModels;
 
+public enum DealFilterKind
+{
+    Category,
+    Store,
+    Brand,
+}
+
+/// <summary>A row of the refine box on the Black Friday tab.</summary>
+public sealed record DealRefineRow(string Title, DealFilterViewModel Filter);
+
 /// <summary>One choice in a deals filter, with a checkbox.</summary>
 public sealed partial class DealFilterOptionViewModel(DealFilterViewModel owner, int id, string name) : ObservableObject
 {
@@ -18,9 +28,11 @@ public sealed partial class DealFilterOptionViewModel(DealFilterViewModel owner,
 
     public string CountText => Format.Count(Count);
 
-    public bool IsStore => owner.IsStore;
+    public bool IsCategory => owner.Kind == DealFilterKind.Category;
 
-    public bool IsCategory => !owner.IsStore;
+    public bool IsStore => owner.Kind == DealFilterKind.Store;
+
+    public bool IsBrand => owner.Kind == DealFilterKind.Brand;
 
     [ObservableProperty]
     public partial bool IsSelected { get; set; }
@@ -31,9 +43,12 @@ public sealed partial class DealFilterOptionViewModel(DealFilterViewModel owner,
     partial void OnIsSelectedChanged(bool value) => owner.OnOptionToggled();
 }
 
-/// <summary>A deals filter (category or store): a typed search over hundreds of choices, several can be ticked.</summary>
-public sealed partial class DealFilterViewModel(string title, string placeholder, bool isStore) : ObservableObject
+/// <summary>A deals filter (category, store or brand): a typed search over hundreds of choices, several can be ticked.</summary>
+public sealed partial class DealFilterViewModel(string title, string placeholder, DealFilterKind kind) : ObservableObject
 {
+    /// <summary>How many of the most popular choices the refine box shows directly.</summary>
+    private const int TopCount = 5;
+
     private Dictionary<int, DealFilterOptionViewModel> _known = [];
     private List<DealFilterOptionViewModel> _options = [];
     private bool _silent;
@@ -49,7 +64,11 @@ public sealed partial class DealFilterViewModel(string title, string placeholder
     [ObservableProperty]
     public partial string SearchText { get; set; } = "";
 
-    public bool IsStore { get; } = isStore;
+    public DealFilterKind Kind { get; } = kind;
+
+    /// <summary>What the refine box shows: the most popular choices with deals, and whatever else is ticked.</summary>
+    [ObservableProperty]
+    public partial IReadOnlyList<DealFilterOptionViewModel> Top { get; set; } = [];
 
     public IReadOnlyList<DealFilterOptionViewModel> Selected => [.. _known.Values.Where(o => o.IsSelected)];
 
@@ -100,6 +119,7 @@ public sealed partial class DealFilterViewModel(string title, string placeholder
         _known = known;
         _options = list;
         ApplySearch();
+        UpdateTop();
     }
 
     [RelayCommand]
@@ -121,6 +141,7 @@ public sealed partial class DealFilterViewModel(string title, string placeholder
         SearchText = "";
         OnPropertyChanged(nameof(Label));
         OnPropertyChanged(nameof(HasSelection));
+        UpdateTop();
     }
 
     internal void OnOptionToggled()
@@ -132,10 +153,18 @@ public sealed partial class DealFilterViewModel(string title, string placeholder
 
         OnPropertyChanged(nameof(Label));
         OnPropertyChanged(nameof(HasSelection));
+        UpdateTop();
         SelectionChanged?.Invoke(this, EventArgs.Empty);
     }
 
     partial void OnSearchTextChanged(string value) => ApplySearch();
+
+    private void UpdateTop()
+    {
+        var top = _options.Where(o => o.Count > 0).Take(TopCount).ToList();
+        top.AddRange(_options.Where(o => o.IsSelected && !top.Contains(o)));
+        Top = top;
+    }
 
     private void ApplySearch()
     {
