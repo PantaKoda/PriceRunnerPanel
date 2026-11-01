@@ -1,6 +1,7 @@
 # Builds the portable Windows release: a self-contained win-x64 publish zipped as
 #   artifacts/release/PriceRunnerPanel-<version>-win-x64.zip  (+ .sha256)
-# The .NET runtime is included, so the zip runs on Windows 10 1809+ x64 without installing .NET.
+# The .NET runtime is included, so the zip runs on Windows 10 1809+ x64 without installing .NET. The code is precompiled
+# (ReadyToRun, see the csproj), so the app starts fast.
 # The folder carries release.json: only such a copy may replace itself with a newer release (in-app updates).
 #
 #   pwsh scripts/publish-windows.ps1                    # locked restore, build, publish, zip

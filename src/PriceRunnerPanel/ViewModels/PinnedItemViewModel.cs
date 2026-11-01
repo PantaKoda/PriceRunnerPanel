@@ -201,6 +201,9 @@ public sealed partial class PinnedItemViewModel : ObservableObject
         }
     }
 
+    /// <summary>Only the "Checked … ago" text depends on the clock; the rest is re-read after a check (<see cref="Refresh"/>).</summary>
+    public void RefreshClock() => OnPropertyChanged(nameof(CheckedText));
+
     /// <summary>Applies the typed target price (empty clears it). Returns whether it changed.</summary>
     public bool CommitTarget()
     {

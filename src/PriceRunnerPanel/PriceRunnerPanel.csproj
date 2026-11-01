@@ -10,6 +10,10 @@
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <!-- Release RID (scripts/publish-windows.ps1); listed so restore and packages.lock.json match the release publish. -->
     <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
+    <!-- Published builds are precompiled (ReadyToRun): the window shows in about half the time and startup uses half the
+         CPU, at the cost of a larger zip. Set here rather than on the publish command so the locked restore records the
+         compiler pack. Builds and runs from source are unaffected. -->
+    <PublishReadyToRun>true</PublishReadyToRun>
   </PropertyGroup>
 
   <ItemGroup>

@@ -420,7 +420,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         {
             if (query.Length == 0)
             {
-                Results.Clear();
+                ClearResults();
                 OnPropertyChanged(nameof(HasResults));
                 SearchStatus = "Type a product name — results come from pricerunner.se";
             }
@@ -444,7 +444,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
                 return;
             }
 
-            Results.Clear();
+            ClearResults();
             foreach (var hit in hits)
             {
                 Results.Add(CreateResultRow(hit));
@@ -532,6 +532,17 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         FooterText = $"{title}: {product.Name}";
         var url = PriceRunnerClient.ProductPageUrl(product.Url);
         _toasts.Show(title, $"{product.Name}\n{price}{where}{was}{context}", product.Id, () => OpenUrl(url));
+    }
+
+    /// <summary>Drops the search results and lets go of their pictures, like the Black Friday tab does with its rows.</summary>
+    private void ClearResults()
+    {
+        foreach (var row in Results)
+        {
+            ReleaseImage(row.Hit.ImagePath);
+        }
+
+        Results.Clear();
     }
 
     /// <summary>A product row for the search or Black Friday tab, with its picture on the way.</summary>
@@ -653,7 +664,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         {
             foreach (var pin in Pins)
             {
-                pin.Refresh();
+                pin.RefreshClock();
             }
 
             UpdateStatus();
