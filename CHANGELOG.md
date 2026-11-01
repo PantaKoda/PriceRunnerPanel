@@ -2,7 +2,7 @@
 
 What changed in each PriceRunner Panel release. The section for a version becomes its GitHub release notes, which the app shows in its update window, so write for people using the app.
 
-## [Unreleased]
+## [0.2.0] - 2026-11-01
 
 ### Added
 - **Check for updates from the panel itself:** the footer shows your version with a *Check for updates* link (the tray menu still has it too).
