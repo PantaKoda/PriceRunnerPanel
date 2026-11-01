@@ -59,8 +59,21 @@
           </WrapPanel>
         </StackPanel>
 
+        <Panel>
+        <!-- Nothing newer: a calm "you're on the latest version" instead of an empty notes box. -->
+        <StackPanel IsVisible="{Binding !HasReleases}" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="10">
+          <Border Width="56" Height="56" CornerRadius="28" Background="{DynamicResource DownSoftBrush}"
+                  BorderBrush="{DynamicResource DownBrush}" BorderThickness="1" HorizontalAlignment="Center">
+            <TextBlock Text="✓" FontSize="26" FontWeight="Bold" Foreground="{DynamicResource DownBrush}"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+          <TextBlock Classes="hud" Text="YOU'RE ON THE LATEST VERSION" HorizontalAlignment="Center" />
+          <TextBlock Classes="secondary" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="300" TextTrimming="None"
+                     Text="The panel checks GitHub twice a day and shows an UPDATE button when a new release is out." />
+        </StackPanel>
+
         <!-- What changed, newest release first (plain text) -->
-        <Border Classes="card" Margin="0" Padding="0">
+        <Border Classes="card" Margin="0" Padding="0" IsVisible="{Binding HasReleases}">
           <ScrollViewer Padding="14,10">
             <ItemsControl ItemsSource="{Binding Releases}">
               <ItemsControl.ItemTemplate>
@@ -77,6 +90,7 @@
             </ItemsControl>
           </ScrollViewer>
         </Border>
+        </Panel>
       </DockPanel>
     </Border>
   </Panel>

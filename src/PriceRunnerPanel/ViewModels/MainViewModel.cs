@@ -119,6 +119,15 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void OpenUpdate() => UpdateRequested?.Invoke(this, EventArgs.Empty);
 
+    /// <summary>This copy's version, shown in the footer.</summary>
+    public string VersionText => $"v{AppInfo.Version}";
+
+    /// <summary>The footer's "Check for updates" link was clicked; the app checks now and opens the update window.</summary>
+    public event EventHandler? CheckForUpdatesRequested;
+
+    [RelayCommand]
+    private void CheckForUpdates() => CheckForUpdatesRequested?.Invoke(this, EventArgs.Empty);
+
     /// <summary>Records that <paramref name="version"/> was announced; false when it already was.</summary>
     public bool MarkUpdateNotified(string version)
     {

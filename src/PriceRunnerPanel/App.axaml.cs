@@ -70,6 +70,7 @@ public partial class App : Application
         _updates.Changed += (_, _) => Dispatcher.UIThread.Post(OnUpdatesChanged);
         _updates.ExitRequested += (_, _) => Dispatcher.UIThread.Post(Quit);
         _viewModel!.UpdateRequested += (_, _) => ShowUpdateWindow();
+        _viewModel.CheckForUpdatesRequested += (_, _) => CheckForUpdates();
 
         if (install.UpdatedFrom is { } from)
         {
@@ -127,6 +128,13 @@ public partial class App : Application
         }
     }
 
+    /// <summary>The tray's "Check for updates…" and the footer link: open the update window and check right away.</summary>
+    private void CheckForUpdates()
+    {
+        ShowUpdateWindow();
+        _ = _updates?.CheckNowAsync();
+    }
+
     private void Quit()
     {
         if (_window is not null)
@@ -142,11 +150,7 @@ public partial class App : Application
         var menu = new NativeMenu();
         menu.Items.Add(Item("Open panel", ShowWindow));
         menu.Items.Add(Item("Check prices now", () => _ = _viewModel?.CheckAllAsync()));
-        menu.Items.Add(Item("Check for updates…", () =>
-        {
-            ShowUpdateWindow();
-            _ = _updates?.CheckNowAsync();
-        }));
+        menu.Items.Add(Item("Check for updates…", CheckForUpdates));
         menu.Items.Add(new NativeMenuItemSeparator());
         var autostart = new NativeMenuItem("Start with Windows")
         {

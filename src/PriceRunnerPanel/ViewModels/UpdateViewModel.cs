@@ -36,7 +36,11 @@ public sealed partial class UpdateViewModel : ObservableObject, IDisposable
     public partial string Summary { get; private set; } = "";
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasReleases))]
     public partial IReadOnlyList<ReleaseNotesItem> Releases { get; private set; } = [];
+
+    /// <summary>There are release notes to show; otherwise the window says this copy is the latest.</summary>
+    public bool HasReleases => Releases.Count > 0;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(InstallCommand))]

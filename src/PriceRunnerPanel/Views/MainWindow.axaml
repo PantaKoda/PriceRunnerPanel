@@ -175,7 +175,14 @@
         <!-- Footer: last event, data source, resize grip. -->
         <Grid DockPanel.Dock="Bottom" ColumnDefinitions="*,Auto,Auto" Margin="16,4,4,6">
           <TextBlock Classes="secondary" Text="{Binding FooterText}" VerticalAlignment="Center" />
-          <TextBlock Grid.Column="1" Classes="secondary" Text="data · pricerunner.se" Margin="8,0" VerticalAlignment="Center" Opacity="0.8" />
+          <!-- This copy's version; click to check GitHub for a newer release (same as the tray's "Check for updates…"). -->
+          <Button Grid.Column="1" Classes="link" Command="{Binding CheckForUpdatesCommand}" Margin="8,0" VerticalAlignment="Center"
+                  ToolTip.Tip="Check for updates" AutomationProperties.Name="Check for updates">
+            <StackPanel Orientation="Horizontal" Spacing="5">
+              <PathIcon Data="{StaticResource IconRefresh}" Width="10" Height="10" Foreground="{DynamicResource HudAccentBrush}" />
+              <TextBlock Classes="secondary" Text="{Binding VersionText, StringFormat='{}{0} · Check for updates'}" VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
           <Border Grid.Column="2" Width="16" Height="16" Background="Transparent" Cursor="BottomRightCorner"
                   PointerPressed="OnGripPointerPressed" ToolTip.Tip="Drag to resize">
             <PathIcon Data="{StaticResource IconGrip}" Width="10" Height="10" Foreground="{DynamicResource HudFrameBrush}" />

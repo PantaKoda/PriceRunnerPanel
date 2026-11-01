@@ -48,7 +48,8 @@ A copy built from source works fully but never replaces itself; the update windo
 
 - The app checks this repository's GitHub releases 20 seconds after it starts and then every 12 hours,
   anonymously. When a newer release exists, an **UPDATE** button appears in the header and a notification is shown
-  once for that version. *Check for updates…* in the tray menu checks right away.
+  once for that version. *Check for updates* (bottom-right of the panel, next to your version, or in the tray menu)
+  checks right away.
 - **Install update** (only when you click it) downloads the release zip from github.com, checks it against the
   release's SHA-256, unpacks it into `%LOCALAPPDATA%\PriceRunnerPanel\updates`, quits, and lets the new copy swap
   itself into the install folder and start. The previous version is kept as `<folder>.previous`; a failed swap
