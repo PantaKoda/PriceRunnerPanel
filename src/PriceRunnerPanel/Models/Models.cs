@@ -35,6 +35,15 @@ public sealed record DealFacetOption(int Id, string Name, int Count);
 /// <summary>What the deals can be filtered by, most popular first.</summary>
 public sealed record DealFacets(IReadOnlyList<DealFacetOption> Categories, IReadOnlyList<DealFacetOption> Merchants, IReadOnlyList<DealFacetOption> Brands);
 
+/// <summary>What to narrow a product search to. PriceRunner takes one category (it drops the filter if given more), and any number of stores and brands.</summary>
+public sealed record SearchFilter(int? Category, IReadOnlyCollection<int> Merchants, IReadOnlyCollection<int> Brands)
+{
+    public static SearchFilter None { get; } = new(null, [], []);
+}
+
+/// <summary>A product search's listings, and what they can be filtered by. Its choices come without counts.</summary>
+public sealed record SearchPage(IReadOnlyList<SearchHit> Hits, DealFacets Facets);
+
 /// <summary>The current offers for one product: what it costs right now and where.</summary>
 public sealed record PriceSnapshot(
     decimal? LowestInStock,

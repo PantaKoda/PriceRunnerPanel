@@ -64,16 +64,35 @@ public sealed class PriceRunnerClient : IDisposable
         return $"{ImageHost}/product/{size}x{size}{rest}?ph=true";
     }
 
-    public async Task<IReadOnlyList<SearchHit>> SearchAsync(string query, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<SearchHit>> SearchAsync(string query, CancellationToken cancellationToken) =>
+        (await SearchAsync(query, SearchFilter.None, cancellationToken).ConfigureAwait(false)).Hits;
+
+    /// <summary>
+    /// PriceRunner applies the filter itself, so it fills its at most 20 listings from everything that matches, not just
+    /// from the listings shown before. The answer also carries the filter choices, without a request of their own.
+    /// </summary>
+    public async Task<SearchPage> SearchAsync(string query, SearchFilter filter, CancellationToken cancellationToken)
     {
         var url = $"/se/api/search-edge-rest/public/search/v6/{Market}?q={Uri.EscapeDataString(query)}&facetsSize=10";
-        using var document = await GetJsonAsync(url, cancellationToken).ConfigureAwait(false);
-        if (!document.RootElement.TryGetProperty("products", out var products) || products.ValueKind != JsonValueKind.Array)
+        if (filter.Category is { } category)
         {
-            return [];
+            url += $"&af_CATEGORY=cl{category}";
         }
 
-        return ParseHits(products);
+        if (filter.Merchants.Count > 0)
+        {
+            url += $"&af_MERCHANT={string.Join(',', filter.Merchants)}";
+        }
+
+        if (filter.Brands.Count > 0)
+        {
+            url += $"&af_BRAND={string.Join(',', filter.Brands)}";
+        }
+
+        using var document = await GetJsonAsync(url, cancellationToken).ConfigureAwait(false);
+        var root = document.RootElement;
+        var hits = root.TryGetProperty("products", out var products) && products.ValueKind == JsonValueKind.Array ? ParseHits(products) : [];
+        return new SearchPage(hits, new DealFacets(ParseSearchCategories(root), ParseQuickFilter(root, "MERCHANT"), ParseQuickFilter(root, "BRAND")));
     }
 
     /// <summary>
@@ -377,6 +396,53 @@ public sealed class PriceRunnerClient : IDisposable
     }
 
     /// <summary>The popular choices in PriceRunner's order ("rankedCounts"), then all the others, largest first.</summary>
+    /// <summary>A search lists its categories with ids like "cl38".</summary>
+    private static List<DealFacetOption> ParseSearchCategories(JsonElement root)
+    {
+        var options = new List<DealFacetOption>();
+        if (root.TryGetProperty("categories", out var categories) && categories.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var category in categories.EnumerateArray())
+            {
+                var id = Str(category, "id");
+                if (id is not null && id.StartsWith("cl", StringComparison.Ordinal) && int.TryParse(id.AsSpan(2), NumberStyles.None, CultureInfo.InvariantCulture, out var number)
+                    && Str(category, "name") is { } name)
+                {
+                    options.Add(new DealFacetOption(number, name, 0));
+                }
+            }
+        }
+
+        return options;
+    }
+
+    private static List<DealFacetOption> ParseQuickFilter(JsonElement root, string filterId)
+    {
+        var options = new List<DealFacetOption>();
+        if (!root.TryGetProperty("quickFilters", out var filters) || filters.ValueKind != JsonValueKind.Array)
+        {
+            return options;
+        }
+
+        foreach (var filter in filters.EnumerateArray().Where(f => Str(f, "id") == filterId))
+        {
+            if (!filter.TryGetProperty("options", out var list) || list.ValueKind != JsonValueKind.Array)
+            {
+                continue;
+            }
+
+            foreach (var option in list.EnumerateArray())
+            {
+                if (int.TryParse(Str(option, "id"), NumberStyles.None, CultureInfo.InvariantCulture, out var id) && Str(option, "value") is { } name)
+                {
+                    options.Add(new DealFacetOption(id, name, 0));
+                }
+            }
+        }
+
+        return options;
+    }
+
     private static List<DealFacetOption> ParseFacet(JsonElement container)
     {
         var facet = Obj(container, "facet");

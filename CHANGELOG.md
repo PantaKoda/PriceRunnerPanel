@@ -2,6 +2,11 @@
 
 What changed in each PriceRunner Panel release. The section for a version becomes its GitHub release notes, which the app shows in its update window, so write for people using the app.
 
+## [0.4.8] - 2026-11-02
+
+### Added
+- **Filter your searches:** after you search, pick a **category**, **brands** and **stores** to narrow the results, shown as chips with a cross to remove them. PriceRunner searches again with your filters, so `2x32` in *RAM minnen* lists only RAM, without the dumbbells and plumbing. PriceRunner offers up to 8 brands and 8 stores per search, and one category at a time. With a store picked, the big price is still the lowest at any store.
+
 ## [0.4.7] - 2026-11-01
 
 ### Changed

@@ -29,7 +29,8 @@ dotnet run --project src/PriceRunnerPanel
 A copy built from source works fully but never replaces itself; the update window links to GitHub instead.
 
 - **Search** — type a product name; results (picture, stores, rating, lowest price, recent drop) appear as you type.
-  **PIN** starts tracking; click again to unpin. Click a name to open it on PriceRunner.
+  **PIN** starts tracking; click again to unpin. Click a name to open it on PriceRunner. Narrow a search by category,
+  brand and store: PriceRunner searches again with them and offers one category at a time and up to 8 brands and stores.
 - **Black Friday** — PriceRunner's current deals, the list on
   [pricerunner.se/c/black-friday](https://www.pricerunner.se/c/black-friday): products at least 10 % below their
   earlier price, newest drops first. Filter by category and store (popular ones first, type to find the rest, tick
@@ -89,7 +90,7 @@ A copy built from source works fully but never replaces itself; the update windo
 
 Two public JSON endpoints that the pricerunner.se web app itself uses, anonymously and read-only:
 
-- search: `/se/api/search-edge-rest/public/search/v6/SE?q=…`
+- search: `/se/api/search-edge-rest/public/search/v6/SE?q=…`, optionally with `af_CATEGORY=cl…`, `af_MERCHANT` and `af_BRAND`
 - offers of one product: `/se/api/product-detail-edge-rest/public/product-detail/v0/offers/SE/{id}` filtered to new
   items from Swedish stores.
 - deals and their filters: `/se/api/deals-edge-rest/public/search/deals/products/v3/SE` and `…/deals/facets/SE`, with

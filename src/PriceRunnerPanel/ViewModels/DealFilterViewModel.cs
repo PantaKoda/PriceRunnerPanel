@@ -39,7 +39,7 @@ public sealed partial class DealFilterOptionViewModel(DealFilterViewModel owner,
     [NotifyPropertyChangedFor(nameof(CountText))]
     public partial int Count { get; set; }
 
-    public string CountText => Format.Count(Count);
+    public string CountText => owner.HasCounts ? Format.Count(Count) : "";
 
     public bool IsCategory => owner.Kind == DealFilterKind.Category;
 
@@ -53,11 +53,14 @@ public sealed partial class DealFilterOptionViewModel(DealFilterViewModel owner,
     [RelayCommand]
     private void Remove() => IsSelected = false;
 
-    partial void OnIsSelectedChanged(bool value) => owner.OnOptionToggled();
+    partial void OnIsSelectedChanged(bool value) => owner.OnOptionToggled(this, value);
 }
 
-/// <summary>A deals filter (category, store or brand): a typed search over hundreds of choices, several can be ticked.</summary>
-public sealed partial class DealFilterViewModel(string title, string placeholder, DealFilterKind kind) : ObservableObject
+/// <summary>
+/// A filter (category, store or brand) on the Black Friday or Search tab: a typed search over its choices. Several can be
+/// ticked, unless it is single-choice, where ticking one replaces the other.
+/// </summary>
+public sealed partial class DealFilterViewModel(string title, string placeholder, DealFilterKind kind, bool singleChoice = false, bool hasCounts = true) : ObservableObject
 {
     /// <summary>How many of the most popular choices the refine box shows directly.</summary>
     private const int TopCount = 5;
@@ -78,6 +81,10 @@ public sealed partial class DealFilterViewModel(string title, string placeholder
     public partial string SearchText { get; set; } = "";
 
     public DealFilterKind Kind { get; } = kind;
+
+    public bool HasCounts { get; } = hasCounts;
+
+    public bool HasOptions => _options.Count > 0;
 
     /// <summary>What the refine box shows: the most popular choices with deals, and whatever else is ticked.</summary>
     [ObservableProperty]
@@ -131,6 +138,7 @@ public sealed partial class DealFilterViewModel(string title, string placeholder
 
         _known = known;
         _options = list;
+        OnPropertyChanged(nameof(HasOptions));
         ApplySearch();
         UpdateTop();
     }
@@ -157,11 +165,22 @@ public sealed partial class DealFilterViewModel(string title, string placeholder
         UpdateTop();
     }
 
-    internal void OnOptionToggled()
+    internal void OnOptionToggled(DealFilterOptionViewModel toggled, bool selected)
     {
         if (_silent)
         {
             return;
+        }
+
+        if (singleChoice && selected)
+        {
+            _silent = true;
+            foreach (var other in _known.Values.Where(o => o != toggled))
+            {
+                other.IsSelected = false;
+            }
+
+            _silent = false;
         }
 
         OnPropertyChanged(nameof(Label));

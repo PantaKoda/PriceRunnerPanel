@@ -44,6 +44,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _toasts = toasts;
         _state = store.Load();
         Deals = new DealsViewModel(this, client);
+        SearchFilters.Changed += (_, _) => _ = RunSearchAsync(Query, debounce: true);
 
         foreach (var pin in _state.Pins)
         {
@@ -69,6 +70,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     /// <summary>The Black Friday tab.</summary>
     public DealsViewModel Deals { get; }
+
+    public SearchFiltersViewModel SearchFilters { get; } = new();
 
     public ObservableCollection<PinnedItemViewModel> Pins { get; } = [];
 
@@ -265,6 +268,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
+    private void ClearSearchFilters() => SearchFilters.Clear();
+
+    [RelayCommand]
     public async Task CheckAllAsync()
     {
         if (_checkingAll || Pins.Count == 0)
@@ -421,6 +427,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
             if (query.Length == 0)
             {
                 ClearResults();
+                SearchFilters.Reset();
                 OnPropertyChanged(nameof(HasResults));
                 SearchStatus = "Type a product name — results come from pricerunner.se";
             }
@@ -438,22 +445,26 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
             IsSearching = true;
             SearchStatus = $"Searching for “{query}”…";
-            var hits = await _client.SearchAsync(query, cts.Token);
+            var page = await _client.SearchAsync(query, SearchFilters.Current, cts.Token);
             if (cts.IsCancellationRequested)
             {
                 return;
             }
 
+            SearchFilters.Offer(query, page.Facets);
             ClearResults();
-            foreach (var hit in hits)
+            foreach (var hit in page.Hits)
             {
                 Results.Add(CreateResultRow(hit));
             }
 
             OnPropertyChanged(nameof(HasResults));
-            SearchStatus = hits.Count == 0
-                ? $"No products found for “{query}”"
-                : $"{hits.Count} products  ·  pin one to track its price";
+            var found = page.Hits.Count == 1 ? "1 product" : $"{page.Hits.Count} products";
+            SearchStatus = page.Hits.Count == 0
+                ? SearchFilters.HasFilters ? $"No products match “{query}” with these filters" : $"No products found for “{query}”"
+                : SearchFilters.HasStoreFilter
+                    ? $"{found} sold there  ·  the price shown is the lowest at any store"
+                    : $"{found}  ·  pin one to track its price";
         }
         catch (OperationCanceledException) when (cts.IsCancellationRequested)
         {
