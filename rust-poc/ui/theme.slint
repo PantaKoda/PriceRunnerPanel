@@ -1,0 +1,174 @@
+// "Clean room HUD" palette, the same values as App.axaml (Slint writes alpha last: #rrggbbaa).
+export global Theme {
+    out property <color> accent: #0088AE;
+    out property <color> accent-dark: #006A88;
+    out property <color> accent-soft: #0088AE1A;
+    out property <color> frame: #0088AE59;
+    out property <color> dim: #56637A;
+    out property <color> text: #132036;
+    out property <color> hover: #0088AE14;
+    out property <color> panel: #0088AE0C;
+    out property <color> card: #FFFFFFC8;
+    out property <color> card-in-group: #FFFFFFE6;
+    out property <color> card-border: #0088AE2E;
+    out property <color> down: #0B9463;
+    out property <color> down-soft: #0B946316;
+    out property <color> up: #CC2D4F;
+    out property <color> up-soft: #CC2D4F14;
+    out property <color> warn: #B86200;
+    out property <color> warn-soft: #E07A0018;
+    out property <color> target: #7A4DE0;
+    out property <color> target-soft: #7A4DE016;
+    out property <brush> surface: @linear-gradient(135deg, #FBFDFF 0%, #EEF5FC 55%, #E2ECF8 100%);
+}
+
+// Material Design Icons (Apache License 2.0), the same set as App.axaml.
+export global Icons {
+    out property <string> refresh: "M17.65 6.35A7.96 7.96 0 0 0 12 4a8 8 0 1 0 7.73 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z";
+    out property <string> minimize: "M6 11h12v2H6z";
+    out property <string> close: "M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z";
+    out property <string> open-external: "M14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7zm5 16H5V5h7V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7h-2v7z";
+    out property <string> search: "M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z";
+    out property <string> pin: "M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z";
+    out property <string> pin-off: "M2 5.27 3.28 4 20 20.72 18.73 22l-5.93-5.93V22h-1.6v-6H6v-2l2-2v-.73L2 5.27M16 12l2 2v2h-.18L8 6.18V4H7V2h10v2h-1v8z";
+    out property <string> store: "M20 4H4v2h16V4zm1 10v-2l-1-5H4l-1 5v2h1v6h10v-6h4v6h2v-6h1zm-9 4H6v-4h6v4z";
+    out property <string> target: "M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8zm0-14a6 6 0 1 0 6 6 6 6 0 0 0-6-6zm0 10a4 4 0 1 1 4-4 4 4 0 0 1-4 4zm0-6a2 2 0 1 0 2 2 2 2 0 0 0-2-2z";
+    out property <string> grip: "M22 22h-2v-2h2v2zm0-4h-2v-2h2v2zm-4 4h-2v-2h2v2zm0-4h-2v-2h2v2zm-4 4h-2v-2h2v2zm8-8h-2v-2h2v2z";
+    out property <string> deal: "M2 3.5C2 2.67 2.67 2 3.5 2h7.17c.4 0 .78.16 1.06.44l9.83 9.83c.59.59.59 1.54 0 2.12l-7.17 7.17c-.59.59-1.54.59-2.12 0L2.44 11.73A1.5 1.5 0 0 1 2 10.67V3.5zM7 8.75a1.75 1.75 0 1 0 0-3.5 1.75 1.75 0 0 0 0 3.5z";
+    out property <string> brand: "M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z";
+    out property <string> layers: "M12 16.54 4.63 10.8 3 12.07l9 7 9-7-1.64-1.28L12 16.54zM12 14l7.36-5.73L21 7l-9-7-9 7 1.63 1.27L12 14z";
+    out property <string> clear: "M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z";
+}
+
+export component Icon inherits Rectangle {
+    in property <string> d;
+    in property <color> tint: Theme.dim;
+    in property <length> size: 14px;
+    width: size; height: size;
+    Path { commands: d; fill: tint; viewbox-width: 24; viewbox-height: 24; width: 100%; height: 100%; }
+}
+
+// Compact icon-only button.
+export component IconButton inherits Rectangle {
+    in property <string> d;
+    in property <bool> danger;
+    in property <bool> busy;
+    in property <length> icon-size: 14px;
+    callback clicked;
+    width: 28px; height: 28px; border-radius: 6px;
+    background: ta.has-hover ? Theme.hover : transparent;
+    ta := TouchArea { clicked => { root.clicked(); } mouse-cursor: MouseCursor.pointer; }
+    Icon { d: root.d; size: root.icon-size; tint: root.busy ? Theme.accent : ta.has-hover ? (root.danger ? Theme.up : Theme.accent) : Theme.dim; }
+}
+
+// Small rounded label with a soft fill. kind: 0 plain, 1 down, 2 up, 3 warn, 4 target, 5 solid, 6 variant.
+export component Chip inherits Rectangle {
+    in property <string> text;
+    in property <int> kind;
+    in property <length> max-text-width: 200px;
+    border-radius: 8px; border-width: 1px;
+    border-color: kind == 1 ? Theme.down : kind == 2 ? Theme.up : kind == 3 ? Theme.warn : kind == 4 ? Theme.target : kind == 5 ? Theme.down : kind == 6 ? Theme.accent : Theme.frame;
+    background: kind == 1 ? Theme.down-soft : kind == 2 ? Theme.up-soft : kind == 3 ? Theme.warn-soft : kind == 4 ? Theme.target-soft : kind == 5 ? Theme.down : kind == 6 ? white : Theme.panel;
+    width: t.width + 13px; height: t.preferred-height + 4px;
+    t := Text {
+        x: 6px; y: 2px; text: root.text; font-size: 10.5px; font-weight: 600; overflow: elide;
+        width: min(self.preferred-width, root.max-text-width); letter-spacing: kind == 5 ? 1.2px : 0;
+        color: kind == 1 ? Theme.down : kind == 2 ? Theme.up : kind == 3 ? Theme.warn : kind == 4 ? Theme.target : kind == 5 ? white : kind == 6 ? Theme.accent : Theme.dim;
+    }
+}
+
+// Accent action button ("Check now"), quiet pill, or an active (filled) choice.
+export component PillButton inherits Rectangle {
+    in property <string> text;
+    in property <string> d;
+    in property <bool> accent;
+    in property <bool> active;
+    in property <bool> enabled: true;
+    in property <length> font-size: 11px;
+    callback clicked;
+    height: 26px; border-radius: 13px; border-width: 1px;
+    width: l.preferred-width;
+    border-color: accent ? transparent : (ta.has-hover || active) ? Theme.accent : Theme.card-border;
+    background: accent ? (ta.has-hover ? Theme.accent-dark : Theme.accent) : active ? Theme.accent : white;
+    opacity: enabled ? 1 : 0.5;
+    ta := TouchArea { enabled: root.enabled; clicked => { root.clicked(); } mouse-cursor: MouseCursor.pointer; }
+    l := HorizontalLayout {
+        padding-left: 10px; padding-right: 10px; spacing: 5px; alignment: center;
+        if d != "" : Icon { d: root.d; size: 11px; tint: (accent || active) ? white : (ta.has-hover ? Theme.accent : Theme.text); }
+        Text { text: root.text; font-size: root.font-size; font-weight: accent ? 600 : 400; vertical-alignment: center; color: (accent || active) ? white : (ta.has-hover ? Theme.accent : Theme.text); }
+    }
+}
+
+// Quiet text link.
+export component Link inherits Rectangle {
+    in property <string> text;
+    in property <string> d;
+    in property <color> tint: Theme.dim;
+    in property <length> font-size: 11px;
+    in property <int> font-weight: 400;
+    callback clicked;
+    min-width: 0; height: l.preferred-height;
+    ta := TouchArea { clicked => { root.clicked(); } mouse-cursor: MouseCursor.pointer; }
+    l := HorizontalLayout {
+        spacing: 5px;
+        if d != "" : Icon { d: root.d; size: 10px; tint: Theme.accent; }
+        Text { text: root.text; font-size: root.font-size; font-weight: root.font-weight; color: ta.has-hover ? Theme.accent : root.tint; vertical-alignment: center; overflow: elide; min-width: 0; }
+    }
+}
+
+// Search box: a white capsule with a cyan focus ring and a clear button.
+export component SearchBox inherits Rectangle {
+    in property <string> placeholder;
+    in-out property <string> text <=> input.text;
+    callback edited(string);
+    callback accepted(string);
+    callback cleared;
+    in property <bool> autofocus;
+    init => { if (autofocus) { input.focus(); } }
+    height: 38px; border-radius: 19px; background: white; border-width: input.has-focus ? 1.5px : 1px;
+    border-color: input.has-focus ? Theme.accent : ta.has-hover ? Theme.frame : Theme.card-border;
+    ta := TouchArea { clicked => { input.focus(); } mouse-cursor: MouseCursor.text; }
+    Icon { x: 13px; y: (parent.height - self.height) / 2; d: Icons.search; size: 15px; tint: Theme.accent; }
+    input := TextInput {
+        x: 34px; y: (parent.height - self.height) / 2; width: parent.width - 34px - 34px; height: self.preferred-height;
+        font-size: 13.5px; color: Theme.text; single-line: true;
+        edited => { root.edited(self.text); }
+        accepted => { root.accepted(self.text); }
+        key-pressed(e) => { if (e.text == Key.Escape) { root.cleared(); return accept; } return reject; }
+    }
+    if input.text == "" : Text { x: 34px; y: (parent.height - self.height) / 2; text: root.placeholder; font-size: 13.5px; color: Theme.dim; }
+    if input.text != "" : IconButton { x: parent.width - 33px; y: 5px; d: Icons.clear; clicked => { root.cleared(); } }
+}
+
+// Small text field (target price, discount percent).
+export component SmallEdit inherits Rectangle {
+    in property <string> placeholder;
+    in-out property <string> text <=> input.text;
+    in property <TextHorizontalAlignment> align: left;
+    callback accepted(string);
+    callback edited(string);
+    callback focus-lost(string);
+    height: 26px; border-radius: 6px; background: white; border-width: 1px;
+    border-color: input.has-focus ? Theme.accent : Theme.card-border;
+    TouchArea { clicked => { input.focus(); } mouse-cursor: MouseCursor.text; }
+    input := TextInput {
+        x: 8px; y: (parent.height - self.height) / 2; width: parent.width - 16px; height: self.preferred-height;
+        font-size: 12px; color: Theme.text; single-line: true; horizontal-alignment: root.align;
+        edited => { root.edited(self.text); }
+        accepted => { root.accepted(self.text); }
+        changed has-focus => { if (!self.has-focus) { root.focus-lost(self.text); } }
+    }
+    if input.text == "" : Text { x: 8px; y: (parent.height - self.height) / 2; width: parent.width - 16px; text: root.placeholder; font-size: 12px; color: Theme.dim; horizontal-alignment: root.align; }
+}
+
+// Thin indeterminate "scan line" shown while something is active.
+export component ScanLine inherits Rectangle {
+    height: 2px; clip: true;
+    Rectangle {
+        property <float> pos: 0;
+        width: 30%; height: 100%; background: Theme.accent; border-radius: 1px;
+        x: -self.width + (parent.width + self.width) * pos;
+        animate pos { duration: 1100ms; iteration-count: -1; }
+        init => { pos = 1; }
+    }
+}

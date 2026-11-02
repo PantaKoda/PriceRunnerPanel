@@ -1,0 +1,610 @@
+import { ListView, ComboBox, CheckBox, ScrollView } from "std-widgets.slint";
+import { Theme, Icons, Icon, IconButton, Chip, PillButton, Link, SearchBox, SmallEdit, ScanLine } from "theme.slint";
+export { Theme, Icons }
+
+// A product in the search results and on the Black Friday tab.
+export struct ResultRow {
+    id: string,
+    name: string,
+    detail: string,
+    description: string,
+    price: string,
+    old-price: string,
+    drop-text: string,
+    condition: string,
+    store-text: string,
+    verdict: string,
+    verdict-kind: int,
+    insight: string,
+    pinned: bool,
+    image: image,
+}
+
+// A pinned product's card.
+export struct PinCard {
+    id: string,
+    name: string,
+    image: image,
+    price: string,
+    change-text: string,
+    trend: int,
+    store-text: string,
+    insight: string,
+    variant: string,
+    verdict: string,
+    verdict-kind: int,
+    condition: string,
+    looks-used: bool,
+    reported-drop: string,
+    at-lowest: bool,
+    lowest-chip: string,
+    below-target: bool,
+    spark-line: string,
+    spark-area: string,
+    spark-low-x: float,
+    spark-low-y: float,
+    spark-has-low: bool,
+    spark-last-x: float,
+    spark-last-y: float,
+    spark-empty: bool,
+    deal-position: float,
+    low-text: string,
+    high-text: string,
+    target-input: string,
+    target-hint: string,
+    checked-text: string,
+    error-text: string,
+    has-store-link: bool,
+    checking: bool,
+}
+
+// A product on its own, or a box around the pinned variants of one product.
+export struct PinGroup {
+    title: string,
+    is-group: bool,
+    count-text: string,
+    summary: string,
+    items: [PinCard],
+}
+
+// One choice in a deals filter. kind: 0 category, 1 store, 2 brand.
+export struct FilterOption {
+    id: int,
+    name: string,
+    count-text: string,
+    selected: bool,
+    kind: int,
+}
+
+// Where the current price sits between the lowest and highest price seen.
+component DealMeter inherits Rectangle {
+    in property <float> position; // -1 when unknown
+    height: 12px;
+    Rectangle { y: 4px; height: 4px; border-radius: 2px; background: @linear-gradient(90deg, #0EA86C 0%, #E0B020 55%, #E0405E 100%); }
+    if position < 0 : Rectangle { y: 4px; height: 4px; border-radius: 2px; background: #FFFFFFA6; }
+    if position >= 0 : Rectangle {
+        x: clamp(position, 0, 1) * (parent.width - 10px); y: 1px; width: 10px; height: 10px; border-radius: 5px;
+        background: white; border-width: 2px; border-color: Theme.accent;
+    }
+}
+
+// A price history as a step line with a soft area beneath, a dot on the latest price and a mark on the lowest.
+// The commands are written in a 0..1000 x 0..40 box by the Rust side and stretched to the card's width.
+component Sparkline inherits Rectangle {
+    in property <PinCard> card;
+    height: 40px;
+    Rectangle { y: parent.height - 1px; height: 1px; background: #70809040; }
+    if !card.spark-empty : Path { commands: card.spark-area; fill: #0088AE24; viewbox-width: 1000; viewbox-height: 40; fit: fill; width: 100%; height: 100%; }
+    if !card.spark-empty : Path { commands: card.spark-line; stroke: Theme.accent; stroke-width: 1.6px; stroke-line-join: round; viewbox-width: 1000; viewbox-height: 40; fit: fill; width: 100%; height: 100%; }
+    if !card.spark-empty && card.spark-has-low : Rectangle { x: card.spark-low-x * parent.width - 2.6px; y: card.spark-low-y * 1px - 2.6px; width: 5.2px; height: 5.2px; border-radius: 2.6px; background: Theme.down; }
+    if !card.spark-empty : Rectangle { x: card.spark-last-x * parent.width - 6px; y: card.spark-last-y * 1px - 6px; width: 12px; height: 12px; border-radius: 6px; background: #0088AE38; }
+    if !card.spark-empty : Rectangle { x: card.spark-last-x * parent.width - 3px; y: card.spark-last-y * 1px - 3px; width: 6px; height: 6px; border-radius: 3px; background: Theme.accent; }
+}
+
+component Thumb inherits Rectangle {
+    in property <image> source;
+    width: 56px; height: 56px; border-radius: 8px; background: white; border-width: 1px; border-color: Theme.card-border; clip: true;
+    Image { x: 4px; y: 4px; width: 48px; height: 48px; source: root.source; image-fit: contain; }
+}
+
+// A product row (search and Black Friday).
+component ResultCard inherits Rectangle {
+    in property <ResultRow> item;
+    callback open;
+    callback toggle-pin;
+    height: l.preferred-height + 8px;
+    Rectangle {
+        y: 0; height: parent.height - 8px;
+        background: Theme.card; border-radius: 10px; border-width: 1px; border-color: hover.has-hover ? Theme.frame : Theme.card-border;
+        hover := TouchArea { }
+        l := HorizontalLayout {
+            padding: 10px; spacing: 12px;
+            Thumb { source: item.image; }
+            VerticalLayout {
+                spacing: 2px; alignment: center; horizontal-stretch: 1;
+                Link { text: item.name; tint: Theme.text; font-size: 13px; font-weight: 600; clicked => { root.open(); } }
+                if item.store-text != "" : HorizontalLayout { spacing: 4px; Icon { d: Icons.store; size: 11px; tint: Theme.accent; } Text { text: item.store-text; font-size: 11px; font-weight: 600; color: Theme.accent; overflow: elide; min-width: 0; vertical-alignment: center; } }
+                Text { text: item.detail; font-size: 11px; color: Theme.dim; overflow: elide; min-width: 0; }
+                if item.description != "" : Text { text: item.description; font-size: 11px; color: Theme.dim; opacity: 0.85; overflow: elide; min-width: 0; }
+                if item.condition != "" : HorizontalLayout { alignment: start; padding-top: 2px; Chip { text: item.condition; kind: 3; } }
+                if item.verdict != "" : HorizontalLayout { alignment: start; padding-top: 2px; Chip { text: item.verdict; kind: item.verdict-kind; } }
+                if item.insight != "" : Text { text: item.insight; font-size: 11px; color: Theme.dim; overflow: elide; min-width: 0; }
+            }
+            VerticalLayout {
+                spacing: 5px; alignment: center; min-width: 92px;
+                Text { text: item.price; font-size: 17px; font-weight: 700; color: Theme.text; horizontal-alignment: right; }
+                if item.old-price != "" : Text { text: item.old-price; font-size: 11px; color: Theme.dim; horizontal-alignment: right; }
+                if item.drop-text != "" : HorizontalLayout { alignment: end; Chip { text: item.drop-text; kind: 1; } }
+                HorizontalLayout {
+                    alignment: end;
+                    pin := Rectangle {
+                        width: pl.preferred-width; height: 24px; border-radius: 12px; border-width: 1px; border-color: Theme.accent;
+                        background: item.pinned ? (pta.has-hover ? Theme.accent-dark : Theme.accent) : (pta.has-hover ? Theme.hover : white);
+                        pta := TouchArea { clicked => { root.toggle-pin(); } mouse-cursor: MouseCursor.pointer; }
+                        pl := HorizontalLayout {
+                            padding-left: 9px; padding-right: 9px; spacing: 4px; alignment: center;
+                            Icon { d: Icons.pin; size: 11px; tint: item.pinned ? white : Theme.accent; }
+                            Text { text: item.pinned ? "PINNED" : "PIN"; font-size: 10px; font-weight: 700; letter-spacing: 1.4px; vertical-alignment: center; color: item.pinned ? white : Theme.accent; }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// A pinned product's card: current price, how it moved since pinning, history and an optional target.
+component PinnedCard inherits Rectangle {
+    in property <PinCard> card;
+    in property <bool> in-group;
+    callback open;
+    callback open-store;
+    callback check;
+    callback unpin;
+    callback save-target(string);
+    height: l.preferred-height + 8px;
+    Rectangle {
+        y: 0; height: parent.height - 8px;
+        background: in-group ? Theme.card-in-group : Theme.card; border-radius: 10px; border-width: 1px;
+        border-color: card.at-lowest ? Theme.down : hover.has-hover ? Theme.frame : Theme.card-border;
+        hover := TouchArea { }
+        if card.checking : ScanLine { y: 2px; x: 12px; width: parent.width - 24px; }
+        l := VerticalLayout {
+            padding-left: 12px; padding-right: 12px; padding-top: 10px; padding-bottom: 10px; spacing: 0;
+            HorizontalLayout {
+                spacing: 12px;
+                Thumb { source: card.image; }
+                VerticalLayout {
+                    spacing: 3px; alignment: center; horizontal-stretch: 1;
+                    Link { text: card.name; tint: Theme.text; font-size: 13px; font-weight: 600; clicked => { root.open(); } }
+                    Text { text: card.store-text; font-size: 11px; color: Theme.dim; overflow: elide; min-width: 0; }
+                    if card.insight != "" : Text { text: card.insight; font-size: 11px; color: Theme.dim; overflow: elide; min-width: 0; }
+                    HorizontalLayout {
+                        spacing: 4px; alignment: start;
+                        if card.variant != "" : Chip { text: "● " + card.variant; kind: 6; }
+                        if card.verdict != "" : Chip { text: card.verdict; kind: card.verdict-kind; }
+                        if card.condition != "" : Chip { text: card.condition; kind: 3; }
+                        if card.looks-used : Chip { text: "⚠ LOOKS USED"; kind: 3; }
+                        if card.reported-drop != "" : Chip { text: card.reported-drop; kind: 0; }
+                        if card.at-lowest : Chip { text: card.lowest-chip; kind: 5; }
+                        if card.below-target : Chip { text: "🎯 TARGET HIT"; kind: 4; }
+                    }
+                }
+                VerticalLayout {
+                    spacing: 4px; alignment: center;
+                    Text { text: card.price; font-size: 22px; font-weight: 700; color: Theme.text; horizontal-alignment: right; }
+                    HorizontalLayout { alignment: end; Chip { text: card.change-text; kind: card.trend; } }
+                }
+            }
+            Sparkline { card: root.card; }
+            HorizontalLayout {
+                padding-top: 6px; padding-bottom: 8px; spacing: 8px;
+                Text { text: card.low-text; font-size: 11px; color: Theme.down; vertical-alignment: center; }
+                DealMeter { position: card.deal-position; horizontal-stretch: 1; }
+                Text { text: card.high-text; font-size: 11px; color: Theme.up; vertical-alignment: center; }
+            }
+            HorizontalLayout {
+                spacing: 6px;
+                Icon { d: Icons.target; size: 13px; tint: Theme.target; }
+                SmallEdit { width: 96px; text: card.target-input; placeholder: "Target kr"; accepted(t) => { root.save-target(t); } focus-lost(t) => { root.save-target(t); } }
+                VerticalLayout {
+                    alignment: center; horizontal-stretch: 1; padding-left: 2px;
+                    Text { text: card.target-hint; font-size: 10.5px; color: Theme.dim; overflow: elide; }
+                    Text { text: card.error-text != "" ? card.error-text : card.checked-text; font-size: 10.5px; color: card.error-text != "" ? Theme.up : Theme.dim; overflow: elide; }
+                }
+                HorizontalLayout {
+                    alignment: end;
+                    if card.has-store-link : IconButton { d: Icons.store; clicked => { root.open-store(); } }
+                    IconButton { d: Icons.open-external; clicked => { root.open(); } }
+                    IconButton { d: Icons.refresh; busy: card.checking; clicked => { root.check(); } }
+                    IconButton { d: Icons.pin-off; danger: true; clicked => { root.unpin(); } }
+                }
+            }
+        }
+    }
+}
+
+// Segmented tab button.
+component SegButton inherits Rectangle {
+    in property <string> text;
+    in property <string> d;
+    in property <bool> checked;
+    callback clicked;
+    height: 30px; border-radius: 8px;
+    background: checked ? white : ta.has-hover ? Theme.hover : transparent;
+    border-width: checked ? 1px : 0; border-color: Theme.card-border;
+    ta := TouchArea { clicked => { root.clicked(); } mouse-cursor: MouseCursor.pointer; }
+    HorizontalLayout {
+        alignment: center; spacing: 6px; padding-left: 10px; padding-right: 10px;
+        Icon { d: root.d; size: 12px; tint: (checked || ta.has-hover) ? Theme.accent : Theme.dim; }
+        Text { text: root.text; font-size: 11px; font-weight: 600; letter-spacing: 1.8px; vertical-alignment: center; color: (checked || ta.has-hover) ? Theme.accent : Theme.dim; }
+    }
+}
+
+// A deals filter: a button that opens a searchable list of checkboxes.
+component FilterButton inherits Rectangle {
+    in property <string> label;
+    in property <string> placeholder;
+    in property <bool> active;
+    in property <[FilterOption]> options;
+    in property <bool> has-selection;
+    callback search(string);
+    callback toggled(int, bool);
+    callback clear;
+    height: 26px; border-radius: 13px; border-width: 1px; width: hl.preferred-width;
+    border-color: (active || ta.has-hover) ? Theme.accent : Theme.card-border; background: white;
+    ta := TouchArea { clicked => { root.search(""); popup.show(); } mouse-cursor: MouseCursor.pointer; }
+    hl := HorizontalLayout {
+        padding-left: 10px; padding-right: 10px; spacing: 5px; alignment: center;
+        Text { text: root.label; font-size: 11px; vertical-alignment: center; overflow: elide; width: min(self.preferred-width, 130px); color: (active || ta.has-hover) ? Theme.accent : Theme.text; }
+        Text { text: "▾"; font-size: 11px; vertical-alignment: center; color: (active || ta.has-hover) ? Theme.accent : Theme.text; }
+    }
+    popup := PopupWindow {
+        x: 0; y: root.height + 4px; width: 290px; height: 380px;
+        close-policy: close-on-click-outside;
+        Rectangle {
+            background: white; border-radius: 12px; border-width: 1px; border-color: Theme.frame;
+            VerticalLayout {
+                padding: 10px; spacing: 6px;
+                SearchBox { placeholder: root.placeholder; edited(t) => { root.search(t); } cleared => { self.text = ""; root.search(""); } }
+                ListView {
+                    for o in root.options : Rectangle {
+                        height: 28px;
+                        HorizontalLayout {
+                            padding-left: 4px; padding-right: 16px; spacing: 8px;
+                            CheckBox { checked: o.selected; text: o.name; toggled => { root.toggled(o.id, self.checked); } horizontal-stretch: 1; }
+                            Text { text: o.count-text; font-size: 11px; color: Theme.dim; vertical-alignment: center; }
+                        }
+                    }
+                }
+                if root.has-selection : Link { text: "Clear this filter"; tint: Theme.accent; clicked => { root.clear(); } }
+            }
+        }
+    }
+}
+
+// A row of the refine box: the top choices as toggles, and the full list behind "More".
+component RefineRow inherits HorizontalLayout {
+    in property <string> title;
+    in property <string> placeholder;
+    in property <[FilterOption]> top-options;
+    in property <[FilterOption]> options;
+    in property <bool> has-selection;
+    callback toggled(int, bool);
+    callback search(string);
+    callback clear;
+    spacing: 6px;
+    Text { text: root.title; font-size: 11px; font-weight: 600; color: Theme.dim; width: 46px; vertical-alignment: top; }
+    HorizontalLayout {
+        spacing: 4px; alignment: start; horizontal-stretch: 1;
+        for o in root.top-options : Rectangle {
+            width: tl.preferred-width; height: 22px; border-radius: 11px; border-width: 1px;
+            border-color: (o.selected || tta.has-hover) ? Theme.target : Theme.card-border;
+            background: o.selected ? Theme.target : white;
+            tta := TouchArea { clicked => { root.toggled(o.id, !o.selected); } mouse-cursor: MouseCursor.pointer; }
+            tl := HorizontalLayout {
+                padding-left: 8px; padding-right: 8px; spacing: 4px; alignment: center;
+                Text { text: o.name; font-size: 11px; overflow: elide; width: min(self.preferred-width, 100px); vertical-alignment: center; color: o.selected ? white : tta.has-hover ? Theme.target : Theme.text; }
+                Text { text: o.count-text; font-size: 11px; opacity: 0.65; vertical-alignment: center; color: o.selected ? white : Theme.text; }
+            }
+        }
+    }
+    more := FilterButton { label: "More"; placeholder: root.placeholder; options: root.options; has-selection: root.has-selection; search(t) => { root.search(t); } toggled(id, on) => { root.toggled(id, on); } clear => { root.clear(); } }
+}
+
+export component App inherits Window {
+    title: "PriceRunner Panel";
+    icon: @image-url("../assets/icon.png");
+    no-frame: true;
+    resize-border-width: 6px;
+    preferred-width: 480px; preferred-height: 720px;
+    min-width: 430px; min-height: 420px;
+    default-font-family: "Segoe UI";
+    default-font-size: 12px;
+    background: #F7FBFF;
+
+    // 0 search, 1 deals, 2 watchlist
+    in-out property <int> tab: 2;
+    in property <string> status-text: "";
+    in property <bool> checking;
+    in property <string> footer-text: "";
+    in property <string> version-text: "";
+    in property <bool> has-pins;
+    in property <string> watchlist-label: "WATCHLIST";
+    in property <[string]> intervals: ["15 min", "30 min", "1 h", "2 h", "4 h", "8 h", "24 h"];
+    in-out property <int> interval-index: 2;
+
+    // Search tab
+    in property <string> search-status: "";
+    in property <bool> searching;
+    in property <[ResultRow]> results;
+
+    // Black Friday tab
+    in property <string> deals-status: "";
+    in property <bool> deals-loading;
+    in property <[ResultRow]> deals;
+    in property <bool> can-load-more;
+    in property <string> load-more-text: "Show more deals";
+    in property <bool> has-filters;
+    in property <string> category-label: "Category";
+    in property <string> store-label: "Store";
+    in property <bool> category-active;
+    in property <bool> store-active;
+    in property <[FilterOption]> category-options;
+    in property <[FilterOption]> store-options;
+    in property <[FilterOption]> brand-options;
+    in property <[FilterOption]> brand-top;
+    in property <[FilterOption]> store-top;
+    in property <bool> brand-has-selection;
+    in property <bool> store-has-selection;
+    in property <bool> category-has-selection;
+    in property <[FilterOption]> active-filters;
+    in-out property <string> min-drop: "10";
+    in-out property <string> max-drop: "90";
+    in property <int> active-preset: 10;
+
+    // Watchlist
+    in property <[PinGroup]> groups;
+
+    callback drag-window;
+    callback resize-window;
+    callback minimize;
+    callback hide-window;
+    callback check-all;
+    callback check-one(string);
+    callback unpin(string);
+    callback open-product(string);
+    callback open-store(string);
+    callback save-target(string, string);
+    callback interval-changed(int);
+    callback search-edited(string);
+    callback search-now(string);
+    callback toggle-pin(string);
+    callback check-for-updates;
+    callback show-tab(int);
+    callback deals-search-edited(string);
+    callback deals-refresh;
+    callback deals-load-more;
+    callback deals-clear-filters;
+    callback filter-search(int, string);
+    callback filter-toggled(int, int, bool);
+    callback filter-clear(int);
+    callback drop-edited(string, string);
+    callback drop-preset(int);
+
+
+    keys := FocusScope {
+        capture-key-pressed(e) => {
+            if (e.text == Key.F5) { root.check-all(); return accept; }
+            if (e.modifiers.control && e.text == "f") { root.show-tab(0); return accept; }
+            if (e.modifiers.control && e.text == "1") { root.show-tab(0); return accept; }
+            if (e.modifiers.control && e.text == "2") { root.show-tab(1); return accept; }
+            if (e.modifiers.control && e.text == "3") { root.show-tab(2); return accept; }
+            return reject;
+        }
+
+        // Surface, glow and HUD corners; content above them.
+        Rectangle { background: Theme.surface; }
+        Rectangle { background: @radial-gradient(circle, #00B4D833 0%, #00B4D800 100%); x: parent.width * 0.5; y: -parent.height * 0.25; width: parent.width * 0.7; height: parent.height * 0.5; }
+        Rectangle { border-width: 1px; border-color: Theme.frame; }
+        Rectangle { x: 3px; y: 3px; width: 2px; height: 16px; background: Theme.frame; }
+        Rectangle { x: 3px; y: 3px; width: 16px; height: 2px; background: Theme.frame; }
+        Rectangle { x: parent.width - 5px; y: 3px; width: 2px; height: 16px; background: Theme.frame; }
+        Rectangle { x: parent.width - 19px; y: 3px; width: 16px; height: 2px; background: Theme.frame; }
+        Rectangle { x: 3px; y: parent.height - 19px; width: 2px; height: 16px; background: Theme.frame; }
+        Rectangle { x: 3px; y: parent.height - 5px; width: 16px; height: 2px; background: Theme.frame; }
+        Rectangle { x: parent.width - 5px; y: parent.height - 19px; width: 2px; height: 16px; background: Theme.frame; }
+        Rectangle { x: parent.width - 19px; y: parent.height - 5px; width: 16px; height: 2px; background: Theme.frame; }
+
+        VerticalLayout {
+            padding: 0; spacing: 0;
+
+            // Header: drag to move.
+            Rectangle {
+                height: 44px;
+                TouchArea { pointer-event(e) => { if (e.kind == PointerEventKind.down && e.button == PointerEventButton.left) { root.drag-window(); } } }
+                HorizontalLayout {
+                    padding-left: 16px; padding-right: 8px; padding-top: 10px; padding-bottom: 4px; spacing: 10px;
+                    Text { text: "◆ PRICERUNNER PANEL"; font-size: 12.5px; font-weight: 700; letter-spacing: 2.2px; color: Theme.accent; vertical-alignment: center; }
+                    HorizontalLayout {
+                        alignment: start; horizontal-stretch: 1;
+                        Rectangle {
+                            height: 20px; width: sl.preferred-width; border-radius: 10px; border-width: 1px; border-color: Theme.frame; background: white;
+                            sl := HorizontalLayout {
+                                padding-left: 8px; padding-right: 8px; spacing: 6px; alignment: center;
+                                Rectangle { width: 7px; height: 7px; border-radius: 3.5px; background: root.checking ? Theme.accent : Theme.down; y: (parent.height - 7px) / 2; }
+                                Text { text: root.status-text; font-size: 9.5px; font-weight: 600; letter-spacing: 0.8px; color: Theme.accent; vertical-alignment: center; overflow: elide; }
+                            }
+                        }
+                    }
+                    HorizontalLayout {
+                        alignment: end;
+                        if root.has-pins : IconButton { d: Icons.refresh; busy: root.checking; clicked => { root.check-all(); } }
+                        IconButton { d: Icons.minimize; clicked => { root.minimize(); } }
+                        IconButton { d: Icons.close; danger: true; clicked => { root.hide-window(); } }
+                    }
+                }
+            }
+
+            // Tabs
+            Rectangle {
+                height: 36px;
+                Rectangle {
+                    x: 14px; width: parent.width - 28px; y: 0; height: 36px; border-radius: 11px; background: Theme.panel; border-width: 1px; border-color: Theme.card-border;
+                    HorizontalLayout {
+                        padding: 3px; spacing: 3px;
+                        SegButton { text: "SEARCH"; d: Icons.search; checked: root.tab == 0; clicked => { root.show-tab(0); } horizontal-stretch: 1; }
+                        SegButton { text: "BLACK FRIDAY"; d: Icons.deal; checked: root.tab == 1; clicked => { root.show-tab(1); } }
+                        SegButton { text: root.watchlist-label; d: Icons.pin; checked: root.tab == 2; clicked => { root.show-tab(2); } }
+                    }
+                }
+            }
+            Rectangle { height: 10px; }
+
+            // SEARCH
+            if root.tab == 0 : VerticalLayout {
+                spacing: 0;
+                HorizontalLayout { padding-left: 14px; padding-right: 14px; padding-bottom: 6px; SearchBox { autofocus: true; placeholder: "Search products, e.g. Sony WH-1000XM6"; edited(t) => { root.search-edited(t); } accepted(t) => { root.search-now(t); } cleared => { self.text = ""; root.search-edited(""); } } }
+                VerticalLayout {
+                    padding-left: 18px; padding-right: 18px; padding-bottom: 6px; spacing: 4px;
+                    Text { text: root.search-status; font-size: 11px; color: Theme.dim; overflow: elide; min-width: 0; }
+                    if root.searching : ScanLine { }
+                }
+                ListView {
+                    vertical-stretch: 1;
+                    for r in root.results : HorizontalLayout {
+                        padding-left: 14px; padding-right: 14px;
+                        ResultCard { item: r; open => { root.open-product(r.id); } toggle-pin => { root.toggle-pin(r.id); } }
+                    }
+                }
+            }
+
+            // BLACK FRIDAY
+            if root.tab == 1 : VerticalLayout {
+                spacing: 0;
+                HorizontalLayout { padding-left: 14px; padding-right: 14px; padding-bottom: 6px; SearchBox { placeholder: "Search these deals, e.g. Sony"; edited(t) => { root.deals-search-edited(t); } cleared => { self.text = ""; root.deals-search-edited(""); } } }
+                HorizontalLayout {
+                    padding-left: 14px; padding-right: 14px; padding-bottom: 6px; spacing: 6px;
+                    FilterButton { label: root.category-label; placeholder: "Find a category"; active: root.category-active; options: root.category-options; has-selection: root.category-has-selection; search(t) => { root.filter-search(0, t); } toggled(id, on) => { root.filter-toggled(0, id, on); } clear => { root.filter-clear(0); } }
+                    FilterButton { label: root.store-label; placeholder: "Find a store"; active: root.store-active; options: root.store-options; has-selection: root.store-has-selection; search(t) => { root.filter-search(1, t); } toggled(id, on) => { root.filter-toggled(1, id, on); } clear => { root.filter-clear(1); } }
+                    Rectangle { horizontal-stretch: 1; }
+                    if root.has-filters : Link { text: "Clear"; tint: Theme.accent; clicked => { root.deals-clear-filters(); } }
+                    IconButton { d: Icons.refresh; busy: root.deals-loading; clicked => { root.deals-refresh(); } }
+                }
+                HorizontalLayout {
+                    padding-left: 16px; padding-right: 14px; padding-bottom: 6px; spacing: 5px; alignment: start;
+                    Text { text: "DISCOUNT"; font-size: 10px; font-weight: 600; letter-spacing: 1.8px; color: Theme.accent; vertical-alignment: center; }
+                    SmallEdit { width: 44px; text: root.min-drop; align: center; edited(t) => { root.drop-edited(t, root.max-drop); } }
+                    Text { text: "–"; font-size: 11px; color: Theme.dim; vertical-alignment: center; }
+                    SmallEdit { width: 44px; text: root.max-drop; align: center; edited(t) => { root.drop-edited(root.min-drop, t); } }
+                    Text { text: "%"; font-size: 11px; color: Theme.dim; vertical-alignment: center; }
+                    Rectangle { width: 3px; }
+                    PillButton { text: "10 %+"; height: 22px; active: root.active-preset == 10; clicked => { root.drop-preset(10); } }
+                    PillButton { text: "20 %+"; height: 22px; active: root.active-preset == 20; clicked => { root.drop-preset(20); } }
+                    PillButton { text: "30 %+"; height: 22px; active: root.active-preset == 30; clicked => { root.drop-preset(30); } }
+                    PillButton { text: "50 %+"; height: 22px; active: root.active-preset == 50; clicked => { root.drop-preset(50); } }
+                }
+                if root.has-filters : HorizontalLayout {
+                    padding-left: 14px; padding-right: 14px; padding-bottom: 6px; spacing: 4px; alignment: start;
+                    for f in root.active-filters : Rectangle {
+                        width: fl.preferred-width; height: 22px; border-radius: 8px; border-width: 1px; border-color: Theme.accent; background: white;
+                        fl := HorizontalLayout {
+                            padding-left: 7px; padding-right: 3px; spacing: 4px; alignment: center;
+                            Icon { d: f.kind == 0 ? Icons.layers : f.kind == 1 ? Icons.store : Icons.brand; size: 10px; tint: Theme.accent; }
+                            Text { text: f.name; font-size: 10.5px; font-weight: 600; color: Theme.accent; overflow: elide; width: min(self.preferred-width, 150px); vertical-alignment: center; }
+                            IconButton { d: Icons.clear; width: 16px; height: 16px; icon-size: 9px; danger: true; clicked => { root.filter-toggled(f.kind, f.id, false); } }
+                        }
+                    }
+                }
+                if root.has-filters : Rectangle {
+                    height: rl.preferred-height;
+                    Rectangle {
+                        x: 14px; width: parent.width - 28px; border-radius: 10px; background: Theme.target-soft;
+                        Rectangle { x: 0; width: 3px; background: Theme.target; }
+                        rl := VerticalLayout {
+                            padding-left: 10px; padding-right: 10px; padding-top: 7px; padding-bottom: 15px; spacing: 6px;
+                            Text { text: "REFINE THESE RESULTS"; font-size: 9.5px; font-weight: 600; letter-spacing: 1.8px; color: Theme.target; }
+                            RefineRow { title: "Brands"; placeholder: "Find a brand"; top-options: root.brand-top; options: root.brand-options; has-selection: root.brand-has-selection; toggled(id, on) => { root.filter-toggled(2, id, on); } search(t) => { root.filter-search(2, t); } clear => { root.filter-clear(2); } }
+                            RefineRow { title: "Stores"; placeholder: "Find a store"; top-options: root.store-top; options: root.store-options; has-selection: root.store-has-selection; toggled(id, on) => { root.filter-toggled(1, id, on); } search(t) => { root.filter-search(1, t); } clear => { root.filter-clear(1); } }
+                        }
+                    }
+                }
+                VerticalLayout {
+                    padding-left: 18px; padding-right: 18px; padding-bottom: 6px; spacing: 4px;
+                    Text { text: root.deals-status; font-size: 11px; color: Theme.dim; overflow: elide; min-width: 0; }
+                    if root.deals-loading : ScanLine { }
+                }
+                ListView {
+                    vertical-stretch: 1;
+                    for r in root.deals : HorizontalLayout {
+                        padding-left: 14px; padding-right: 14px;
+                        ResultCard { item: r; open => { root.open-product(r.id); } toggle-pin => { root.toggle-pin(r.id); } }
+                    }
+                }
+                if root.can-load-more : HorizontalLayout { alignment: center; padding-top: 2px; padding-bottom: 8px; PillButton { text: root.load-more-text; clicked => { root.deals-load-more(); } } }
+            }
+
+            // WATCHLIST
+            if root.tab == 2 : VerticalLayout {
+                spacing: 0;
+                HorizontalLayout {
+                    padding-left: 18px; padding-right: 16px; padding-bottom: 8px; spacing: 8px;
+                    Text { text: "CHECK EVERY"; font-size: 10px; font-weight: 600; letter-spacing: 1.8px; color: Theme.accent; vertical-alignment: center; }
+                    ComboBox { model: root.intervals; current-index <=> root.interval-index; selected(v) => { root.interval-changed(self.current-index); } width: 100px; }
+                    Rectangle { horizontal-stretch: 1; }
+                    if root.has-pins : PillButton { text: "Check now"; d: Icons.refresh; accent: true; enabled: !root.checking; clicked => { root.check-all(); } }
+                }
+                if !root.has-pins : VerticalLayout {
+                    padding: 50px; spacing: 10px; alignment: start;
+                    HorizontalLayout { alignment: center; Icon { d: Icons.pin; size: 34px; tint: Theme.frame; } }
+                    Text { text: "NO PRODUCTS PINNED"; font-size: 10px; font-weight: 600; letter-spacing: 1.8px; color: Theme.accent; horizontal-alignment: center; }
+                    Text { text: "Search for something you want to buy and pin it. The panel checks its price on a schedule and tells you when it drops."; font-size: 11px; color: Theme.dim; wrap: word-wrap; horizontal-alignment: center; }
+                    HorizontalLayout { alignment: center; padding-top: 6px; PillButton { text: "Search products"; accent: true; clicked => { root.show-tab(0); } } }
+                }
+                ListView {
+                    vertical-stretch: 1;
+                    for g in root.groups : HorizontalLayout {
+                        padding-left: 14px; padding-right: 14px;
+                        Rectangle {
+                            height: gl.preferred-height + (g.is-group ? 12px : 0);
+                            if g.is-group : Rectangle {
+                                y: 0; height: parent.height - 12px; border-radius: 14px; background: Theme.accent-soft; border-width: 1px; border-color: Theme.frame;
+                                Rectangle { x: 0; width: 3px; y: 10px; height: parent.height - 20px; background: Theme.frame; border-radius: 1.5px; }
+                            }
+                            gl := VerticalLayout {
+                                padding-left: g.is-group ? 8px : 0; padding-right: g.is-group ? 8px : 0; padding-top: g.is-group ? 10px : 0; padding-bottom: g.is-group ? 2px : 0;
+                                if g.is-group : HorizontalLayout {
+                                    padding-left: 4px; padding-right: 4px; padding-bottom: 8px; spacing: 8px;
+                                    Icon { d: Icons.layers; size: 14px; tint: Theme.accent; }
+                                    VerticalLayout {
+                                        spacing: 1px; horizontal-stretch: 1;
+                                        Text { text: g.title; font-size: 14px; font-weight: 600; color: Theme.text; overflow: elide; }
+                                        Text { text: g.summary; font-size: 11px; color: Theme.down; overflow: elide; }
+                                    }
+                                    Chip { text: g.count-text; kind: 0; }
+                                }
+                                for c in g.items : PinnedCard {
+                                    card: c; in-group: g.is-group;
+                                    open => { root.open-product(c.id); } open-store => { root.open-store(c.id); } check => { root.check-one(c.id); } unpin => { root.unpin(c.id); }
+                                    save-target(t) => { root.save-target(c.id, t); }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Footer: last event, version, resize grip.
+            HorizontalLayout {
+                padding-left: 16px; padding-right: 4px; padding-top: 4px; padding-bottom: 6px; spacing: 8px;
+                Text { text: root.footer-text; font-size: 11px; color: Theme.dim; vertical-alignment: center; overflow: elide; horizontal-stretch: 1; }
+                Link { text: root.version-text + " · Check for updates"; d: Icons.refresh; clicked => { root.check-for-updates(); } }
+                Rectangle {
+                    width: 16px; height: 16px;
+                    TouchArea { mouse-cursor: MouseCursor.nwse-resize; pointer-event(e) => { if (e.kind == PointerEventKind.down && e.button == PointerEventButton.left) { root.resize-window(); } } }
+                    Icon { d: Icons.grip; size: 10px; tint: Theme.frame; }
+                }
+            }
+        }
+    }
+}
