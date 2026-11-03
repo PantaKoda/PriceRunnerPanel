@@ -2,6 +2,11 @@
 
 What changed in each PriceRunner Panel release. The section for a version becomes its GitHub release notes, which the app shows in its update window, so write for people using the app.
 
+## [0.4.9] - 2026-11-03
+
+### Added
+- **Email alerts for the items you choose:** set up your mail account with the envelope at the top of the watchlist, then switch on the envelope on any card. That product's price alerts also arrive by email, sent from your own account while the app is running. Gmail needs an app password; Outlook.com may refuse this kind of login. The password is stored encrypted for your Windows user.
+
 ## [0.4.8] - 2026-11-02
 
 ### Added

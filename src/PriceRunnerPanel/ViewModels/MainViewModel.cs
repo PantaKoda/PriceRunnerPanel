@@ -45,6 +45,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         _state = store.Load();
         Deals = new DealsViewModel(this, client);
         SearchFilters.Changed += (_, _) => _ = RunSearchAsync(Query, debounce: true);
+        Email = new EmailSettingsViewModel(_state.Settings, SaveAsync);
 
         foreach (var pin in _state.Pins)
         {
@@ -72,6 +73,8 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     public DealsViewModel Deals { get; }
 
     public SearchFiltersViewModel SearchFilters { get; } = new();
+
+    public EmailSettingsViewModel Email { get; }
 
     public ObservableCollection<PinnedItemViewModel> Pins { get; } = [];
 
@@ -542,7 +545,41 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         var context = item.HasVerdict ? $"\n{item.VerdictText.TrimStart('✓', ' ')}  ·  {item.InsightText}" : item.HasInsight ? $"\n{item.InsightText}" : "";
         FooterText = $"{title}: {product.Name}";
         var url = PriceRunnerClient.ProductPageUrl(product.Url);
-        _toasts.Show(title, $"{product.Name}\n{price}{where}{was}{context}", product.Id, () => OpenUrl(url));
+        var body = $"{product.Name}\n{price}{where}{was}{context}";
+        _toasts.Show(title, body, product.Id, () => OpenUrl(url));
+        if (product.EmailAlerts && Email.IsConfigured)
+        {
+            _ = EmailAlertAsync($"{title}: {product.Name}", $"{body}\n\n{url}");
+        }
+    }
+
+    /// <summary>A failed alert isn't sent again: the toast has shown it, and the next drop sends a new one.</summary>
+    private async Task EmailAlertAsync(string subject, string body)
+    {
+        try
+        {
+            await Email.SendAsync(subject, body);
+        }
+        catch (Exception ex) when (EmailSettingsViewModel.IsSendFailure(ex))
+        {
+            var reason = EmailSettingsViewModel.Describe(ex);
+            FooterText = $"Email alert failed: {reason}";
+            _toasts.Show("Email alert failed", reason, "email-failed", null);
+        }
+    }
+
+    internal async Task ToggleEmailAsync(PinnedItemViewModel item)
+    {
+        if (!item.Product.EmailAlerts && !Email.IsConfigured)
+        {
+            FooterText = "Set up email first: the envelope at the top of the watchlist";
+            return;
+        }
+
+        item.Product.EmailAlerts = !item.Product.EmailAlerts;
+        item.RefreshEmail();
+        FooterText = $"{item.EmailLabel}: {item.Name}";
+        await SaveAsync();
     }
 
     /// <summary>Drops the search results and lets go of their pictures, like the Black Friday tab does with its rows.</summary>

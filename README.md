@@ -59,6 +59,8 @@ A copy built from source works fully but never replaces itself; the update windo
 - **Check every** 15 min – 24 h, or **Check now** (F5). Products are checked one after another with a short pause.
 - **Notifications** for a drop of at least 1 %, a new lowest price, or a reached target. Clicking one opens the
   product on PriceRunner. Windows' notification settings and Do not disturb apply.
+- **Email alerts** — per product, off by default. Sent over TLS from your own mail account (port 587) while the app
+  runs, with no server in between. The password is encrypted for your Windows user (DPAPI) in the state file.
 - Closing the window hides it to the tray so tracking continues. The tray icon toggles the window; its menu has
   *Check prices now*, *Check for updates…*, *Start with Windows* and *Quit*. Starting the app again shows the
   running window.

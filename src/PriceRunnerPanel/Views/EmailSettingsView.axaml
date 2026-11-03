@@ -1,0 +1,24 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:PriceRunnerPanel.ViewModels"
+             x:Class="PriceRunnerPanel.Views.EmailSettingsView"
+             x:DataType="vm:EmailSettingsViewModel">
+  <!-- The inside of the watchlist's email dropdown. -->
+  <StackPanel Width="290" Spacing="6">
+    <TextBlock Classes="hud" Text="EMAIL ALERTS" />
+    <TextBlock Classes="secondary" TextWrapping="Wrap"
+               Text="Sent from your own mail account while this app is running. Gmail needs an app password, not your normal one." />
+    <TextBox Text="{Binding Address}" PlaceholderText="Your email address" AutomationProperties.Name="Your email address" />
+    <TextBox Text="{Binding Password}" PasswordChar="•" PlaceholderText="{Binding PasswordHint}" AutomationProperties.Name="App password" />
+    <TextBox Text="{Binding SendTo}" PlaceholderText="Send to (optional, default: same address)" AutomationProperties.Name="Send to" />
+    <TextBox Text="{Binding Server}" PlaceholderText="Mail server (optional, filled in for you)" AutomationProperties.Name="Mail server" />
+    <Grid ColumnDefinitions="*,Auto" Margin="0,2,0,0">
+      <Button Classes="accent" Content="Save and send test" Command="{Binding SaveAndTestCommand}" IsEnabled="{Binding IsIdle}" />
+      <Button Grid.Column="1" Classes="link" Command="{Binding RemoveCommand}" IsVisible="{Binding IsConfigured}" VerticalAlignment="Center"
+              AutomationProperties.Name="Remove email account">
+        <TextBlock Classes="secondary" Text="Remove" Foreground="{DynamicResource HudAccentBrush}" />
+      </Button>
+    </Grid>
+    <TextBlock Classes="secondary" Text="{Binding Status}" TextWrapping="Wrap" />
+  </StackPanel>
+</UserControl>

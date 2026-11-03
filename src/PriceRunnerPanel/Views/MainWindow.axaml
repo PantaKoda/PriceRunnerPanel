@@ -223,6 +223,10 @@
                       ToolTip.Tip="Go to the cheapest store" AutomationProperties.Name="Go to the cheapest store">
                 <PathIcon Data="{StaticResource IconStore}" />
               </Button>
+              <Button Classes="icon" Classes.active="{Binding EmailAlerts}" Command="{Binding ToggleEmailCommand}"
+                      ToolTip.Tip="{Binding EmailLabel, StringFormat='{}{0}. Click to switch.'}" AutomationProperties.Name="{Binding EmailLabel}">
+                <PathIcon Data="{StaticResource IconMail}" />
+              </Button>
               <Button Classes="icon" Command="{Binding OpenCommand}" ToolTip.Tip="Open on PriceRunner" AutomationProperties.Name="Open on PriceRunner">
                 <PathIcon Data="{StaticResource IconOpenExternal}" />
               </Button>
@@ -464,7 +468,16 @@
 
           <!-- WATCHLIST -->
           <DockPanel IsVisible="{Binding IsWatchlistTab}">
-            <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,Auto,*,Auto" ColumnSpacing="8" Margin="18,0,16,8">
+            <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,Auto,*,Auto,Auto" ColumnSpacing="8" Margin="18,0,16,8">
+              <Button Grid.Column="3" Classes="icon" Classes.active="{Binding Email.IsConfigured}" IsVisible="{Binding HasPins}"
+                      ToolTip.Tip="Email alerts: set up the mail account" AutomationProperties.Name="Email alert settings">
+                <PathIcon Data="{StaticResource IconMail}" />
+                <Button.Flyout>
+                  <Flyout Placement="BottomEdgeAlignedRight">
+                    <v:EmailSettingsView DataContext="{Binding Email}" />
+                  </Flyout>
+                </Button.Flyout>
+              </Button>
               <TextBlock Classes="hud" Text="CHECK EVERY" VerticalAlignment="Center" />
               <ComboBox Grid.Column="1" Classes="compact" ItemsSource="{Binding Intervals}" SelectedItem="{Binding SelectedInterval}">
                 <ComboBox.ItemTemplate>
@@ -473,7 +486,7 @@
                   </DataTemplate>
                 </ComboBox.ItemTemplate>
               </ComboBox>
-              <Button Grid.Column="3" Classes="accent" Command="{Binding CheckAllCommand}" IsEnabled="{Binding !IsChecking}" IsVisible="{Binding HasPins}">
+              <Button Grid.Column="4" Classes="accent" Command="{Binding CheckAllCommand}" IsEnabled="{Binding !IsChecking}" IsVisible="{Binding HasPins}">
                 <StackPanel Orientation="Horizontal" Spacing="5">
                   <PathIcon Data="{StaticResource IconRefresh}" Width="11" Height="11" />
                   <TextBlock Text="Check now" VerticalAlignment="Center" />

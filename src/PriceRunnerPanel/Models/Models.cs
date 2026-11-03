@@ -89,6 +89,9 @@ public sealed class PinnedProduct
     public decimal? HighestSeen { get; set; }
     public decimal? TargetPrice { get; set; }
 
+    /// <summary>Also send this product's price alerts by email.</summary>
+    public bool EmailAlerts { get; set; }
+
     public DateTimeOffset? LastChecked { get; set; }
     public string? LastError { get; set; }
     public string? CheapestMerchant { get; set; }
@@ -148,6 +151,24 @@ public sealed class AppSettings
 
     /// <summary>Drops smaller than this (in percent of the previous price) do not notify.</summary>
     public decimal MinDropPercent { get; set; } = 1;
+
+    /// <summary>The mail account for email alerts; null when none is set up.</summary>
+    public EmailSettings? Email { get; set; }
+}
+
+public sealed class EmailSettings
+{
+    public required string Address { get; set; }
+
+    /// <summary>Where alerts go; null sends them to <see cref="Address"/>.</summary>
+    public string? SendTo { get; set; }
+
+    public required string Server { get; set; }
+
+    public int Port { get; set; } = 587;
+
+    /// <summary>The password, encrypted for this Windows user. Never stored in the clear.</summary>
+    public required string ProtectedPassword { get; set; }
 }
 
 public sealed class AppState

@@ -55,6 +55,7 @@
       <StreamGeometry x:Key="IconPinOff">M2 5.27 3.28 4 20 20.72 18.73 22l-5.93-5.93V22h-1.6v-6H6v-2l2-2v-.73L2 5.27M16 12l2 2v2h-.18L8 6.18V4H7V2h10v2h-1v8z</StreamGeometry>
       <StreamGeometry x:Key="IconStore">M20 4H4v2h16V4zm1 10v-2l-1-5H4l-1 5v2h1v6h10v-6h4v6h2v-6h1zm-9 4H6v-4h6v4z</StreamGeometry>
       <StreamGeometry x:Key="IconTarget">M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8zm0-14a6 6 0 1 0 6 6 6 6 0 0 0-6-6zm0 10a4 4 0 1 1 4-4 4 4 0 0 1-4 4zm0-6a2 2 0 1 0 2 2 2 2 0 0 0-2-2z</StreamGeometry>
+      <StreamGeometry x:Key="IconMail">M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 4-8 5-8-5V6l8 5 8-5v2z</StreamGeometry>
       <StreamGeometry x:Key="IconGrip">M22 22h-2v-2h2v2zm0-4h-2v-2h2v2zm-4 4h-2v-2h2v2zm0-4h-2v-2h2v2zm-4 4h-2v-2h2v2zm8-8h-2v-2h2v2z</StreamGeometry>
       <StreamGeometry x:Key="IconUpdate">M12 16.5l4-4h-3v-9h-2v9H8l4 4zm9-13h-6v1.99h6v14.03H3V5.49h6V3.5H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2v-14c0-1.1-.9-2-2-2z</StreamGeometry>
       <StreamGeometry x:Key="IconDeal">F1 M2 3.5C2 2.67 2.67 2 3.5 2h7.17c.4 0 .78.16 1.06.44l9.83 9.83c.59.59.59 1.54 0 2.12l-7.17 7.17c-.59.59-1.54.59-2.12 0L2.44 11.73A1.5 1.5 0 0 1 2 10.67V3.5zM7 8.75a1.75 1.75 0 1 0 0-3.5 1.75 1.75 0 0 0 0 3.5z</StreamGeometry>
@@ -99,6 +100,9 @@
     <Style Selector="Button.icon PathIcon">
       <Setter Property="Width" Value="14" />
       <Setter Property="Height" Value="14" />
+    </Style>
+    <Style Selector="Button.icon.active PathIcon">
+      <Setter Property="Foreground" Value="{DynamicResource HudAccentBrush}" />
     </Style>
 
     <!-- Turning refresh icon while a check runs. Stops with the work, so nothing spins while idle. -->
