@@ -2,6 +2,12 @@
 
 What changed in each PriceRunner Panel release. The section for a version becomes its GitHub release notes, which the app shows in its update window, so write for people using the app.
 
+## [0.4.10] - 2026-11-03
+
+### Fixed
+- **The envelope on a watchlist card seemed to do nothing** before a mail account was set up. It now opens the email setup.
+- **Email errors say what went wrong**, such as a refused connection, instead of only "Failure sending mail".
+
 ## [0.4.9] - 2026-11-03
 
 ### Added

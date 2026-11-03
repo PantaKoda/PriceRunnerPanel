@@ -76,6 +76,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     public EmailSettingsViewModel Email { get; }
 
+    /// <summary>A card's email switch was used before a mail account is set up.</summary>
+    public event EventHandler? EmailSetupRequested;
+
     public ObservableCollection<PinnedItemViewModel> Pins { get; } = [];
 
     /// <summary>The watchlist as shown: pins grouped so the variants (colours) of one product share a box.</summary>
@@ -572,7 +575,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     {
         if (!item.Product.EmailAlerts && !Email.IsConfigured)
         {
-            FooterText = "Set up email first: the envelope at the top of the watchlist";
+            EmailSetupRequested?.Invoke(this, EventArgs.Empty);
             return;
         }
 

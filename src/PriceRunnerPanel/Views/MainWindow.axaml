@@ -469,7 +469,7 @@
           <!-- WATCHLIST -->
           <DockPanel IsVisible="{Binding IsWatchlistTab}">
             <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,Auto,*,Auto,Auto" ColumnSpacing="8" Margin="18,0,16,8">
-              <Button Grid.Column="3" Classes="icon" Classes.active="{Binding Email.IsConfigured}" IsVisible="{Binding HasPins}"
+              <Button Name="EmailButton" Grid.Column="3" Classes="icon" Classes.active="{Binding Email.IsConfigured}" IsVisible="{Binding HasPins}"
                       ToolTip.Tip="Email alerts: set up the mail account" AutomationProperties.Name="Email alert settings">
                 <PathIcon Data="{StaticResource IconMail}" />
                 <Button.Flyout>

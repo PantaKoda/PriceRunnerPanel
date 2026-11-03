@@ -112,7 +112,7 @@ public sealed partial class EmailSettingsViewModel : ObservableObject
             OnPropertyChanged(nameof(PasswordHint));
             await _save();
             await EmailSender.SendAsync(_settings.Email, "PriceRunner Panel: test email", "Email alerts work. Turn them on with the envelope on each watchlist card.");
-            Status = $"Test email sent to {(sendTo.Length > 0 ? sendTo : address)}. Check your inbox.";
+            Status = $"Test email sent to {(sendTo.Length > 0 ? sendTo : address)}. Check your inbox, then click the envelope on the cards you want alerts for.";
         }
         catch (Exception ex) when (IsSendFailure(ex))
         {
