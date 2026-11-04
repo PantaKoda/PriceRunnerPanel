@@ -46,6 +46,9 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         Deals = new DealsViewModel(this, client);
         SearchFilters.Changed += (_, _) => _ = RunSearchAsync(Query, debounce: true);
         Email = new EmailSettingsViewModel(_state.Settings, SaveAsync);
+        Telegram = new TelegramSettingsViewModel(_state.Settings, new TelegramSender(new HttpClient()), SaveAsync);
+        Email.PropertyChanged += OnAlertChannelChanged;
+        Telegram.PropertyChanged += OnAlertChannelChanged;
 
         foreach (var pin in _state.Pins)
         {
@@ -76,8 +79,12 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     public EmailSettingsViewModel Email { get; }
 
-    /// <summary>A card's email switch was used before a mail account is set up.</summary>
-    public event EventHandler? EmailSetupRequested;
+    public TelegramSettingsViewModel Telegram { get; }
+
+    public bool HasAlertChannel => Email.IsConfigured || Telegram.IsConfigured;
+
+    /// <summary>A card's alert switch was used before Telegram or email is set up.</summary>
+    public event EventHandler? AlertSetupRequested;
 
     public ObservableCollection<PinnedItemViewModel> Pins { get; } = [];
 
@@ -550,38 +557,48 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
         var url = PriceRunnerClient.ProductPageUrl(product.Url);
         var body = $"{product.Name}\n{price}{where}{was}{context}";
         _toasts.Show(title, body, product.Id, () => OpenUrl(url));
-        if (product.EmailAlerts && Email.IsConfigured)
+        if (product.RemoteAlerts)
         {
-            _ = EmailAlertAsync($"{title}: {product.Name}", $"{body}\n\n{url}");
+            var text = $"{body}\n\n{url}";
+            _ = SendRemoteAlertAsync("Telegram", () => Telegram.SendAsync($"{title}\n{text}"));
+            _ = SendRemoteAlertAsync("Email", () => Email.SendAsync($"{title}: {product.Name}", text));
         }
     }
 
     /// <summary>A failed alert isn't sent again: the toast has shown it, and the next drop sends a new one.</summary>
-    private async Task EmailAlertAsync(string subject, string body)
+    private async Task SendRemoteAlertAsync(string channel, Func<Task> send)
     {
         try
         {
-            await Email.SendAsync(subject, body);
+            await send();
         }
-        catch (Exception ex) when (EmailSettingsViewModel.IsSendFailure(ex))
+        catch (Exception ex) when (AlertFailure.Is(ex))
         {
-            var reason = EmailSettingsViewModel.Describe(ex);
-            FooterText = $"Email alert failed: {reason}";
-            _toasts.Show("Email alert failed", reason, "email-failed", null);
+            var reason = AlertFailure.Describe(ex);
+            FooterText = $"{channel} alert failed: {reason}";
+            _toasts.Show($"{channel} alert failed", reason, $"{channel}-failed", null);
         }
     }
 
-    internal async Task ToggleEmailAsync(PinnedItemViewModel item)
+    private void OnAlertChannelChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (!item.Product.EmailAlerts && !Email.IsConfigured)
+        if (e.PropertyName == nameof(EmailSettingsViewModel.IsConfigured))
         {
-            EmailSetupRequested?.Invoke(this, EventArgs.Empty);
+            OnPropertyChanged(nameof(HasAlertChannel));
+        }
+    }
+
+    internal async Task ToggleRemoteAlertsAsync(PinnedItemViewModel item)
+    {
+        if (!item.Product.RemoteAlerts && !HasAlertChannel)
+        {
+            AlertSetupRequested?.Invoke(this, EventArgs.Empty);
             return;
         }
 
-        item.Product.EmailAlerts = !item.Product.EmailAlerts;
-        item.RefreshEmail();
-        FooterText = $"{item.EmailLabel}: {item.Name}";
+        item.Product.RemoteAlerts = !item.Product.RemoteAlerts;
+        item.RefreshRemoteAlerts();
+        FooterText = $"{item.RemoteAlertsLabel}: {item.Name}";
         await SaveAsync();
     }
 

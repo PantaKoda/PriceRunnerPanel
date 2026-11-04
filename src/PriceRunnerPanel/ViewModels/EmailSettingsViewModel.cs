@@ -1,5 +1,4 @@
 using System.Net.Mail;
-using System.Security.Cryptography;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using PriceRunnerPanel.Models;
@@ -49,21 +48,9 @@ public sealed partial class EmailSettingsViewModel : ObservableObject
 
     public string PasswordHint => IsConfigured ? "Password saved (type to replace)" : "App password";
 
-    /// <summary>Sends a mail with the configured account; throws what <see cref="Describe"/> can explain.</summary>
+    /// <summary>Sends a mail with the configured account; throws what <see cref="AlertFailure"/> can explain.</summary>
     public Task SendAsync(string subject, string body) =>
         _settings.Email is { } email ? EmailSender.SendAsync(email, subject, body) : Task.CompletedTask;
-
-    public static bool IsSendFailure(Exception ex) =>
-        ex is SmtpException or InvalidOperationException or FormatException or CryptographicException or OperationCanceledException or IOException;
-
-    public static string Describe(Exception ex) => ex switch
-    {
-        OperationCanceledException => "the mail server did not answer in time",
-        CryptographicException => "the saved password can't be read on this Windows account; type it again",
-        // "Failure sending mail." says nothing; the reason is inside.
-        SmtpException { InnerException: { } inner } => inner.Message,
-        _ => ex.Message,
-    };
 
     [RelayCommand]
     private async Task SaveAndTestAsync()
@@ -105,18 +92,18 @@ public sealed partial class EmailSettingsViewModel : ObservableObject
                 SendTo = sendTo.Length > 0 ? sendTo : null,
                 Server = server,
                 Port = EmailSender.SubmissionPort,
-                ProtectedPassword = Password.Length > 0 ? EmailSender.Protect(Password) : _settings.Email!.ProtectedPassword,
+                ProtectedPassword = Password.Length > 0 ? SecretStore.Protect(Password) : _settings.Email!.ProtectedPassword,
             };
             Password = "";
             OnPropertyChanged(nameof(IsConfigured));
             OnPropertyChanged(nameof(PasswordHint));
             await _save();
-            await EmailSender.SendAsync(_settings.Email, "PriceRunner Panel: test email", "Email alerts work. Turn them on with the envelope on each watchlist card.");
-            Status = $"Test email sent to {(sendTo.Length > 0 ? sendTo : address)}. Check your inbox, then click the envelope on the cards you want alerts for.";
+            await EmailSender.SendAsync(_settings.Email, "PriceRunner Panel: test email", "Email alerts work. Turn them on with the bell on each watchlist card.");
+            Status = $"Test email sent to {(sendTo.Length > 0 ? sendTo : address)}. Check your inbox, then click the bell on the cards you want alerts for.";
         }
-        catch (Exception ex) when (IsSendFailure(ex))
+        catch (Exception ex) when (AlertFailure.Is(ex))
         {
-            Status = $"Saved, but the test failed: {Describe(ex)}";
+            Status = $"Saved, but the test failed: {AlertFailure.Describe(ex)}";
         }
         finally
         {

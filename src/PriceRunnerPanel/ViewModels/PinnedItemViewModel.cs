@@ -238,18 +238,18 @@ public sealed partial class PinnedItemViewModel : ObservableObject
 
     private static decimal? Max(decimal? a, decimal? b) => a is { } x && b is { } y ? Math.Max(x, y) : a ?? b;
 
-    public bool EmailAlerts => Product.EmailAlerts;
+    public bool RemoteAlerts => Product.RemoteAlerts;
 
-    public string EmailLabel => Product.EmailAlerts ? "Email alerts on" : "Email alerts off";
+    public string RemoteAlertsLabel => Product.RemoteAlerts ? "Telegram and email alerts on" : "Telegram and email alerts off";
 
     [RelayCommand]
-    private Task ToggleEmailAsync() => _owner.ToggleEmailAsync(this);
+    private Task ToggleRemoteAlertsAsync() => _owner.ToggleRemoteAlertsAsync(this);
 
-    /// <summary>The email switch changed.</summary>
-    internal void RefreshEmail()
+    /// <summary>The alert switch changed.</summary>
+    internal void RefreshRemoteAlerts()
     {
-        OnPropertyChanged(nameof(EmailAlerts));
-        OnPropertyChanged(nameof(EmailLabel));
+        OnPropertyChanged(nameof(RemoteAlerts));
+        OnPropertyChanged(nameof(RemoteAlertsLabel));
     }
 
     [RelayCommand]

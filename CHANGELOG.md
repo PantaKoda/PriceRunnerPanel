@@ -2,6 +2,14 @@
 
 What changed in each PriceRunner Panel release. The section for a version becomes its GitHub release notes, which the app shows in its update window, so write for people using the app.
 
+## [0.4.11] - 2026-11-04
+
+### Added
+- **Telegram alerts:** get the price alerts of the products you choose from your own Telegram bot. Click the bell at the top of the watchlist, paste the bot's token, send the bot a message, then click *Save and send test*. Nothing is saved until the test message goes through. The token is stored encrypted for your Windows user. Alerts are sent while the app is running.
+
+### Changed
+- **One bell on each card instead of the envelope:** it switches that product's alerts on or off, and they go to Telegram, email or both, whichever you've set up. Products you already switched on stay on. Email setup is still there, below Telegram in the same panel.
+
 ## [0.4.10] - 2026-11-03
 
 ### Fixed

@@ -1,15 +1,13 @@
 using System.Net;
 using System.Net.Mail;
-using System.Security.Cryptography;
 using System.Text;
 using PriceRunnerPanel.Models;
 
 namespace PriceRunnerPanel.Services;
 
 /// <summary>
-/// Sends price alerts through the user's own mail account: no server of ours and no paid service. The password is kept
-/// encrypted for the Windows user (DPAPI), so a copy of the state file is no use elsewhere. Always over TLS. Nothing
-/// is loaded or connected until a mail is actually sent.
+/// Sends price alerts through the user's own mail account: no server of ours and no paid service. Always over TLS.
+/// Nothing is loaded or connected until a mail is actually sent.
 /// </summary>
 public static class EmailSender
 {
@@ -26,7 +24,7 @@ public static class EmailSender
             EnableSsl = true,
             DeliveryMethod = SmtpDeliveryMethod.Network,
             UseDefaultCredentials = false,
-            Credentials = new NetworkCredential(settings.Address, Unprotect(settings.ProtectedPassword)),
+            Credentials = new NetworkCredential(settings.Address, SecretStore.Unprotect(settings.ProtectedPassword)),
         };
 
         // SmtpClient's own Timeout doesn't apply to async sends.
@@ -61,10 +59,4 @@ public static class EmailSender
             _ => $"smtp.{domain}",
         };
     }
-
-    public static string Protect(string password) =>
-        Convert.ToBase64String(ProtectedData.Protect(Encoding.UTF8.GetBytes(password), null, DataProtectionScope.CurrentUser));
-
-    private static string Unprotect(string protectedPassword) =>
-        Encoding.UTF8.GetString(ProtectedData.Unprotect(Convert.FromBase64String(protectedPassword), null, DataProtectionScope.CurrentUser));
 }

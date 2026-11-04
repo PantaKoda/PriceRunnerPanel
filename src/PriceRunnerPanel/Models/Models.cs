@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace PriceRunnerPanel.Models;
 
 /// <summary>One product row from a PriceRunner search.</summary>
@@ -89,8 +91,9 @@ public sealed class PinnedProduct
     public decimal? HighestSeen { get; set; }
     public decimal? TargetPrice { get; set; }
 
-    /// <summary>Also send this product's price alerts by email.</summary>
-    public bool EmailAlerts { get; set; }
+    /// <summary>Also send this product's price alerts to Telegram and email, whichever are set up. Saved under its first name.</summary>
+    [JsonPropertyName("EmailAlerts")]
+    public bool RemoteAlerts { get; set; }
 
     public DateTimeOffset? LastChecked { get; set; }
     public string? LastError { get; set; }
@@ -154,6 +157,17 @@ public sealed class AppSettings
 
     /// <summary>The mail account for email alerts; null when none is set up.</summary>
     public EmailSettings? Email { get; set; }
+
+    /// <summary>The bot for Telegram alerts; null when none is set up.</summary>
+    public TelegramSettings? Telegram { get; set; }
+}
+
+public sealed class TelegramSettings
+{
+    /// <summary>The bot token, encrypted for this Windows user. Never stored in the clear.</summary>
+    public required string ProtectedToken { get; set; }
+
+    public required long ChatId { get; set; }
 }
 
 public sealed class EmailSettings

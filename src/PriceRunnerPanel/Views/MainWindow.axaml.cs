@@ -24,7 +24,7 @@ public partial class MainWindow : Window
         if (ViewModel is { } vm)
         {
             vm.SearchRequested += (_, _) => Dispatcher.UIThread.Post(() => SearchBox.Focus(), DispatcherPriority.Input);
-            vm.EmailSetupRequested += (_, _) => EmailButton.Flyout?.ShowAt(EmailButton);
+            vm.AlertSetupRequested += (_, _) => AlertsButton.Flyout?.ShowAt(AlertsButton);
         }
     }
 
