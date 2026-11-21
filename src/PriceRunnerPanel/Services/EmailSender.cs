@@ -24,7 +24,7 @@ public static class EmailSender
             EnableSsl = true,
             DeliveryMethod = SmtpDeliveryMethod.Network,
             UseDefaultCredentials = false,
-            Credentials = new NetworkCredential(settings.Address, SecretStore.Unprotect(settings.ProtectedPassword)),
+            Credentials = new NetworkCredential(settings.Address, await SecretStore.UnprotectAsync(settings.ProtectedPassword).ConfigureAwait(false)),
         };
 
         // SmtpClient's own Timeout doesn't apply to async sends.

@@ -13,4 +13,9 @@
   <ItemGroup Label="Security">
     <PackageVersion Include="System.Security.Cryptography.ProtectedData" Version="10.0.0" />
   </ItemGroup>
+
+  <ItemGroup Label="Linux">
+    <!-- Keep in step with the version Avalonia.FreeDesktop depends on (see packages.lock.json). -->
+    <PackageVersion Include="Tmds.DBus.Protocol" Version="0.94.1" />
+  </ItemGroup>
 </Project>

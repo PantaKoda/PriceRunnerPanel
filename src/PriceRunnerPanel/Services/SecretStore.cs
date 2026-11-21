@@ -1,14 +1,11 @@
-using System.Security.Cryptography;
-using System.Text;
+using PriceRunnerPanel.Platform;
 
 namespace PriceRunnerPanel.Services;
 
-/// <summary>Keeps passwords and tokens encrypted for the Windows user (DPAPI), so a copy of the state file is no use elsewhere.</summary>
+/// <summary>Passwords and tokens in the state file, encrypted for this user by the system's own store (see <see cref="ISecretStore"/>).</summary>
 public static class SecretStore
 {
-    public static string Protect(string secret) =>
-        Convert.ToBase64String(ProtectedData.Protect(Encoding.UTF8.GetBytes(secret), null, DataProtectionScope.CurrentUser));
+    public static Task<string> ProtectAsync(string secret) => PlatformServices.Secrets.ProtectAsync(secret);
 
-    public static string Unprotect(string protectedSecret) =>
-        Encoding.UTF8.GetString(ProtectedData.Unprotect(Convert.FromBase64String(protectedSecret), null, DataProtectionScope.CurrentUser));
+    public static Task<string> UnprotectAsync(string protectedSecret) => PlatformServices.Secrets.UnprotectAsync(protectedSecret);
 }

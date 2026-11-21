@@ -86,6 +86,14 @@ public sealed class UpdateService : IDisposable
     {
         get
         {
+            // The Flatpak's files are read-only; Flatpak itself installs the new version over the old one.
+            if (!OperatingSystem.IsWindows())
+            {
+                return Latest is { } release
+                    ? $"On Linux, download PriceRunnerPanel-{release.Version}-x86_64.flatpak from GitHub and open it (or run: flatpak install --user PriceRunnerPanel-{release.Version}-x86_64.flatpak). Your watchlist stays."
+                    : "There is no update to install.";
+            }
+
             if (!Install.IsPortableRelease)
             {
                 return "This copy wasn't installed from a release zip (for example, it was built from source), so it can't replace itself. Download the update from GitHub instead.";

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- What KDE Discover shows when the .flatpak file is opened. scripts/package-flatpak.sh fills in the release. -->
+<component type="desktop-application">
+  <id>io.github.PantaKoda.PriceRunnerPanel</id>
+  <name>PriceRunner Panel</name>
+  <summary>Track prices on PriceRunner and get notified when they drop</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>LicenseRef-proprietary</project_license>
+  <developer id="io.github.pantakoda">
+    <name>PantaKoda</name>
+  </developer>
+  <description>
+    <p>
+      Search pricerunner.se, pin the products you want, and the panel checks their prices on a schedule and notifies
+      you when one drops. It tells real deals from inflated discounts and lives in the tray.
+    </p>
+    <p>Independent hobby project. Not affiliated with, endorsed by or connected to PriceRunner or Klarna.</p>
+  </description>
+  <launchable type="desktop-id">io.github.PantaKoda.PriceRunnerPanel.desktop</launchable>
+  <url type="homepage">https://github.com/PantaKoda/PriceRunnerPanel</url>
+  <content_rating type="oars-1.1" />
+  <releases>
+    <release version="@VERSION@" date="@DATE@" />
+  </releases>
+</component>

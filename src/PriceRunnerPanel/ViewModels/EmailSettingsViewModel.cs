@@ -86,13 +86,14 @@ public sealed partial class EmailSettingsViewModel : ObservableObject
         Status = "Sending a test email…";
         try
         {
+            var protectedPassword = Password.Length > 0 ? await SecretStore.ProtectAsync(Password) : _settings.Email!.ProtectedPassword;
             _settings.Email = new EmailSettings
             {
                 Address = address,
                 SendTo = sendTo.Length > 0 ? sendTo : null,
                 Server = server,
                 Port = EmailSender.SubmissionPort,
-                ProtectedPassword = Password.Length > 0 ? SecretStore.Protect(Password) : _settings.Email!.ProtectedPassword,
+                ProtectedPassword = protectedPassword,
             };
             Password = "";
             OnPropertyChanged(nameof(IsConfigured));

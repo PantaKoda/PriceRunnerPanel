@@ -4,6 +4,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Platform;
 using Avalonia.Threading;
+using PriceRunnerPanel.Platform;
 using PriceRunnerPanel.Services;
 using PriceRunnerPanel.Updates;
 using PriceRunnerPanel.ViewModels;
@@ -17,7 +18,7 @@ public partial class App : Application
     private MainViewModel? _viewModel;
     private MainWindow? _window;
     private TrayIcon? _tray;
-    private ToastNotifier? _toasts;
+    private INotifier? _toasts;
     private UpdateService? _updates;
     private UpdateWindow? _updateWindow;
     private IClassicDesktopStyleApplicationLifetime? _desktop;
@@ -30,8 +31,8 @@ public partial class App : Application
         {
             var store = new StateStore();
             _client = new PriceRunnerClient();
-            var images = new ImageLoader(_client.Http, Path.Combine(store.DataDirectory, "images"));
-            _toasts = new ToastNotifier();
+            var images = new ImageLoader(_client.Http, AppInfo.ImageCacheDirectory);
+            _toasts = PlatformServices.CreateNotifier();
             _viewModel = new MainViewModel(store, _client, new PriceTracker(_client, TimeProvider.System), images, _toasts);
             _desktop = desktop;
 
@@ -42,15 +43,15 @@ public partial class App : Application
             // Closing the window hides it to the tray so tracking continues; Quit in the tray menu ends the app.
             // Not set as desktop.MainWindow: the lifetime would show that at start, even when launched into the tray.
             desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
-            // Keep the Run entry in line with the setting; this also repairs it after the exe moved.
-            var startup = new StartupRegistration(Environment.ProcessPath ?? Path.Combine(AppContext.BaseDirectory, "PriceRunnerPanel.exe"));
-            startup.Set(_viewModel.StartWithWindows);
+            // Keep the autostart entry in line with the setting; this also repairs it after the exe moved.
+            var startup = PlatformServices.CreateAutostart(Environment.ProcessPath ?? Path.Combine(AppContext.BaseDirectory, AppInfo.ExecutableName));
+            _ = startup.SyncAsync(_viewModel.StartAtLogin);
 
             CreateTray(desktop, icon, startup);
             desktop.Exit += (_, _) => Shutdown();
 
-            // Started by Windows at sign-in: stay in the tray; tracking runs either way.
-            if (!(desktop.Args ?? []).Contains(StartupRegistration.AtLogin))
+            // Started by the system at sign-in: stay in the tray; tracking runs either way.
+            if (!(desktop.Args ?? []).Contains(AppInfo.AtLoginArgument))
             {
                 _window.Show();
             }
@@ -69,7 +70,7 @@ public partial class App : Application
         // Only a real install gets a shortcut, never a build from source.
         if (install.IsPortableRelease && Environment.ProcessPath is { } executable)
         {
-            _viewModel!.SyncStartMenuShortcut(new StartMenuShortcut(executable));
+            _viewModel!.SyncStartMenuShortcut(PlatformServices.CreateShortcut(executable));
         }
 
         _updates = new UpdateService(new ReleaseClient(AppInfo.Repository), install);
@@ -106,7 +107,9 @@ public partial class App : Application
         {
             _toasts?.Show(
                 "Update available",
-                $"PriceRunner Panel {latest.Version} is ready to install (you have {_updates.Current}).",
+                OperatingSystem.IsWindows()
+                    ? $"PriceRunner Panel {latest.Version} is ready to install (you have {_updates.Current})."
+                    : $"PriceRunner Panel {latest.Version} is out (you have {_updates.Current}).",
                 "update",
                 () => Dispatcher.UIThread.Post(ShowUpdateWindow));
         }
@@ -151,23 +154,23 @@ public partial class App : Application
         _desktop?.Shutdown();
     }
 
-    private void CreateTray(IClassicDesktopStyleApplicationLifetime desktop, WindowIcon icon, StartupRegistration startup)
+    private void CreateTray(IClassicDesktopStyleApplicationLifetime desktop, WindowIcon icon, IAutostartService startup)
     {
         var menu = new NativeMenu();
         menu.Items.Add(Item("Open panel", ShowWindow));
         menu.Items.Add(Item("Check prices now", () => _ = _viewModel?.CheckAllAsync()));
         menu.Items.Add(Item("Check for updates…", CheckForUpdates));
         menu.Items.Add(new NativeMenuItemSeparator());
-        var autostart = new NativeMenuItem("Start with Windows")
+        var autostart = new NativeMenuItem(startup.Label)
         {
             ToggleType = MenuItemToggleType.CheckBox,
-            IsChecked = _viewModel?.StartWithWindows ?? false,
+            IsChecked = _viewModel?.StartAtLogin ?? false,
         };
-        autostart.Click += (_, _) =>
+        autostart.Click += async (_, _) =>
         {
             if (_viewModel is not null)
             {
-                autostart.IsChecked = _viewModel.SetStartWithWindows(startup, !_viewModel.StartWithWindows);
+                autostart.IsChecked = await _viewModel.SetStartAtLoginAsync(startup, !_viewModel.StartAtLogin);
             }
         };
         menu.Items.Add(autostart);

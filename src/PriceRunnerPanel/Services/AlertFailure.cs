@@ -13,7 +13,7 @@ public static class AlertFailure
     {
         OperationCanceledException => "no answer in time",
         System.Net.Http.HttpRequestException => "couldn't connect",
-        CryptographicException => "the saved secret can't be read on this Windows account; type it again",
+        CryptographicException => Platform.PlatformServices.Secrets.UnreadableMessage,
         // "Failure sending mail." says nothing; the reason is inside.
         SmtpException { InnerException: { } inner } => inner.Message,
         _ => ex.Message,

@@ -2,13 +2,13 @@ using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.ComTypes;
 using System.Text;
 
-namespace PriceRunnerPanel.Services;
+namespace PriceRunnerPanel.Platform;
 
 /// <summary>
 /// The app's shortcut in the per-user Start menu (no admin rights), which also makes it findable in Windows search.
 /// It carries the app's AppUserModelID, so a shortcut pinned to the taskbar and the running app share one button.
 /// </summary>
-public sealed class StartMenuShortcut(string executablePath)
+public sealed class WindowsStartMenuShortcut(string executablePath) : IShortcutService
 {
     private const string FileName = "PriceRunner Panel.lnk";
     private const ushort VtLpwstr = 31;
@@ -59,7 +59,7 @@ public sealed class StartMenuShortcut(string executablePath)
             link.SetIconLocation(executablePath, 0);
             link.SetDescription("Track prices on PriceRunner");
 
-            value = Marshal.StringToCoTaskMemUni(ToastNotifier.AppUserModelId);
+            value = Marshal.StringToCoTaskMemUni(WindowsToastNotifier.AppUserModelId);
             var key = AppUserModelIdKey;
             var variant = new PropVariant { Type = VtLpwstr, Value = value };
             var properties = (IPropertyStore)link;

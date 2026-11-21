@@ -46,7 +46,7 @@ public sealed partial class TelegramSettingsViewModel : ObservableObject
     {
         if (_settings.Telegram is { } telegram)
         {
-            await _sender.SendAsync(SecretStore.Unprotect(telegram.ProtectedToken), telegram.ChatId, text);
+            await _sender.SendAsync(await SecretStore.UnprotectAsync(telegram.ProtectedToken), telegram.ChatId, text);
         }
     }
 
@@ -78,7 +78,7 @@ public sealed partial class TelegramSettingsViewModel : ObservableObject
         Status = "Sending a test message…";
         try
         {
-            var token = typed.Length > 0 ? typed : SecretStore.Unprotect(_settings.Telegram!.ProtectedToken);
+            var token = typed.Length > 0 ? typed : await SecretStore.UnprotectAsync(_settings.Telegram!.ProtectedToken);
             if (chatText.Length == 0)
             {
                 var chats = await _sender.FindChatsAsync(token);
@@ -96,7 +96,7 @@ public sealed partial class TelegramSettingsViewModel : ObservableObject
             }
 
             await _sender.SendAsync(token, chatId, "PriceRunner Panel: Telegram alerts work. Turn them on with the bell on each watchlist card.");
-            _settings.Telegram = new TelegramSettings { ProtectedToken = SecretStore.Protect(token), ChatId = chatId };
+            _settings.Telegram = new TelegramSettings { ProtectedToken = await SecretStore.ProtectAsync(token), ChatId = chatId };
             Token = "";
             OnPropertyChanged(nameof(IsConfigured));
             OnPropertyChanged(nameof(TokenHint));

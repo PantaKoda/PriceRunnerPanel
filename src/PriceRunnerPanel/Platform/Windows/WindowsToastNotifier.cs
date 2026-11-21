@@ -4,21 +4,21 @@ using Microsoft.Win32;
 using Windows.Data.Xml.Dom;
 using Windows.UI.Notifications;
 
-namespace PriceRunnerPanel.Services;
+namespace PriceRunnerPanel.Platform;
 
 /// <summary>
 /// Windows toast notifications for the unpackaged app. Windows needs an app identity for toasts: the app registers
 /// its AppUserModelID with a display name under HKCU (per user, no admin rights) and uses it for this process.
 /// Toasts respect the OS settings (Do not disturb, per-app switches). Clicking one opens its link.
 /// </summary>
-public sealed class ToastNotifier
+public sealed class WindowsToastNotifier : INotifier
 {
     public const string AppUserModelId = "PriceRunnerPanel.Desktop";
     private const string Group = "prices";
 
     private readonly Windows.UI.Notifications.ToastNotifier? _notifier;
 
-    public ToastNotifier()
+    public WindowsToastNotifier()
     {
         try
         {

@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=PriceRunner Panel
+GenericName=Price tracker
+Comment=Track prices on PriceRunner and get notified when they drop
+Exec=PriceRunnerPanel
+Icon=io.github.PantaKoda.PriceRunnerPanel
+Terminal=false
+Categories=Utility;Network;
+Keywords=price;deal;pricerunner;watchlist;
+StartupNotify=true
+# The X11 window class Avalonia sets, so the taskbar shows this entry's name and icon for the window.
+StartupWMClass=PriceRunnerPanel

@@ -25,6 +25,8 @@ function Invoke-Checked([string]$what, [scriptblock]$command) {
 }
 
 $project = 'src/PriceRunnerPanel/PriceRunnerPanel.csproj'
+# The project also builds for Linux (net10.0); the Windows release is the WinRT target.
+$framework = 'net10.0-windows10.0.19041.0'
 $runtime = 'win-x64'
 $commit = (git rev-parse HEAD).Trim()
 if (git status --porcelain) {
@@ -47,7 +49,7 @@ foreach ($dir in $publishDir, (Join-Path $root "src/PriceRunnerPanel/obj/Release
     if (Test-Path $dir) { Remove-Item -Recurse -Force $dir }
 }
 Invoke-Checked 'Publish' {
-    dotnet publish $project -c Release -r $runtime --self-contained -p:RestoreLockedMode=true -p:Version=$Version `
+    dotnet publish $project -c Release -f $framework -r $runtime --self-contained -p:RestoreLockedMode=true -p:Version=$Version `
         -p:ContinuousIntegrationBuild=true -p:DebugType=none -p:DebugSymbols=false -p:SatelliteResourceLanguages=en -o $publishDir
 }
 if (-not (Test-Path (Join-Path $publishDir 'PriceRunnerPanel.exe'))) { throw 'The publish did not produce PriceRunnerPanel.exe.' }

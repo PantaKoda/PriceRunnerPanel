@@ -1,8 +1,9 @@
 name: Release
 
 # Publishing a release is a maintainer action: push a tag "vX.Y.Z" matching <Version> in Directory.Build.props, with a
-# "## [X.Y.Z]" section in CHANGELOG.md. This builds the portable zip, attests its build provenance, and creates the
-# GitHub release that the app's in-app updates read. Only people with write access can push tags.
+# "## [X.Y.Z]" section in CHANGELOG.md. This builds the portable Windows zip and the Linux Flatpak bundle from the same
+# commit and version, attests their build provenance, and creates the one GitHub release that carries both (the app's
+# in-app updates read it). If either build fails, nothing is released. Only people with write access can push tags.
 on:
   push:
     tags: ['v*.*.*']
@@ -15,12 +16,11 @@ env:
   DOTNET_CLI_TELEMETRY_OPTOUT: true
 
 jobs:
-  release:
-    runs-on: windows-latest
-    permissions:
-      contents: write      # create the release
-      id-token: write      # sign the provenance attestation (Sigstore)
-      attestations: write  # store the attestation
+  prepare:
+    # Fails fast, before anything is built, when the tag, the version or the release notes don't line up.
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -31,6 +31,7 @@ jobs:
 
       # The tag reaches scripts through an environment variable, never interpolated into the script text.
       - name: Check the tag matches the version
+        id: version
         shell: pwsh
         env:
           TAG: ${{ github.ref_name }}
@@ -38,11 +39,34 @@ jobs:
           if ($env:TAG -notmatch '^v\d+\.\d+\.\d+$') { throw "Tag $env:TAG is not vX.Y.Z." }
           $version = (dotnet msbuild src/PriceRunnerPanel/PriceRunnerPanel.csproj -getProperty:Version).Trim()
           if ("v$version" -ne $env:TAG) { throw "Tag $env:TAG doesn't match Version $version in Directory.Build.props." }
-          "VERSION=$version" >> $env:GITHUB_ENV
+          "version=$version" >> $env:GITHUB_OUTPUT
 
       - name: Release notes from CHANGELOG.md
         shell: pwsh
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
         run: pwsh scripts/release-notes.ps1 -Version $env:VERSION > release-notes.md
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-notes
+          path: release-notes.md
+          if-no-files-found: error
+
+  windows:
+    needs: prepare
+    runs-on: windows-latest
+    permissions:
+      contents: read
+      id-token: write      # sign the provenance attestation (Sigstore)
+      attestations: write  # store the attestation
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
 
       - name: Build and package
         shell: pwsh
@@ -54,13 +78,76 @@ jobs:
         with:
           subject-path: artifacts/release/PriceRunnerPanel-*-win-x64.zip
 
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: windows
+          path: |
+            artifacts/release/PriceRunnerPanel-${{ needs.prepare.outputs.version }}-win-x64.zip
+            artifacts/release/PriceRunnerPanel-${{ needs.prepare.outputs.version }}-win-x64.zip.sha256
+          if-no-files-found: error
+
+  linux:
+    needs: prepare
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write      # sign the provenance attestation (Sigstore)
+      attestations: write  # store the attestation
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      # flatpak-builder runs its steps in bubblewrap sandboxes, which need unprivileged user namespaces; Ubuntu's
+      # AppArmor restricts those by default. The runner is thrown away after the job.
+      - name: Install flatpak-builder
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq flatpak flatpak-builder
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+
+      # Publishes the self-contained linux-x64 app, then packs that folder as is (nothing is compiled by Flatpak).
+      - name: Build and package
+        run: scripts/package-flatpak.sh
+
+      #   gh attestation verify PriceRunnerPanel-X.Y.Z-x86_64.flatpak --repo PantaKoda/PriceRunnerPanel
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: artifacts/release/PriceRunnerPanel-*-x86_64.flatpak
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: linux
+          path: |
+            artifacts/release/PriceRunnerPanel-${{ needs.prepare.outputs.version }}-x86_64.flatpak
+            artifacts/release/PriceRunnerPanel-${{ needs.prepare.outputs.version }}-x86_64.flatpak.sha256
+          if-no-files-found: error
+
+  release:
+    # Only once both builds succeeded: one release, same version, all files at once.
+    needs: [prepare, windows, linux]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write      # create the release
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          path: dist
+          merge-multiple: true
+
       - name: Create the GitHub release
-        shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
           TAG: ${{ github.ref_name }}
+          VERSION: ${{ needs.prepare.outputs.version }}
         run: |
-          gh release create $env:TAG `
-            "artifacts/release/PriceRunnerPanel-$env:VERSION-win-x64.zip" `
-            "artifacts/release/PriceRunnerPanel-$env:VERSION-win-x64.zip.sha256" `
-            --title "PriceRunner Panel $env:VERSION" --notes-file release-notes.md --verify-tag
+          gh release create "$TAG" \
+            "dist/PriceRunnerPanel-$VERSION-win-x64.zip" \
+            "dist/PriceRunnerPanel-$VERSION-win-x64.zip.sha256" \
+            "dist/PriceRunnerPanel-$VERSION-x86_64.flatpak" \
+            "dist/PriceRunnerPanel-$VERSION-x86_64.flatpak.sha256" \
+            --title "PriceRunner Panel $VERSION" --notes-file dist/release-notes.md --verify-tag

@@ -1,4 +1,5 @@
-# Regenerates src/PriceRunnerPanel/Assets/PriceRunnerPanel.ico (multi-size, PNG-compressed entries).
+# Regenerates src/PriceRunnerPanel/Assets/PriceRunnerPanel.ico (multi-size, PNG-compressed entries) and the Flatpak's
+# packaging/flatpak/icons/{64,128,256}.png.
 # The design: a pale "lab glass" rounded square, a cyan orbit ring and a downward price arrow.
 # Windows only (System.Drawing). Run from the repository root:  pwsh scripts/make-icon.ps1
 $ErrorActionPreference = 'Stop'
@@ -58,4 +59,11 @@ $w.Flush()
 $target = Join-Path (Get-Location) 'src/PriceRunnerPanel/Assets/PriceRunnerPanel.ico'
 New-Item -ItemType Directory -Force (Split-Path $target) | Out-Null
 [System.IO.File]::WriteAllBytes($target, $out.ToArray())
+
+# The same images for the Linux Flatpak (hicolor icon theme sizes).
+$pngDir = Join-Path (Get-Location) 'packaging/flatpak/icons'
+New-Item -ItemType Directory -Force $pngDir | Out-Null
+for ($i = 0; $i -lt $sizes.Count; $i++) {
+    if ($sizes[$i] -in 64, 128, 256) { [System.IO.File]::WriteAllBytes((Join-Path $pngDir "$($sizes[$i]).png"), $images[$i]) }
+}
 "Wrote $target ($($out.Length) bytes, sizes $($sizes -join ', '))"

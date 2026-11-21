@@ -54,3 +54,31 @@ jobs:
             artifacts/release/*.zip
             artifacts/release/*.sha256
           if-no-files-found: error
+
+  package-linux:
+    # The Flatpak bundle, built by the same script as releases, so a broken Linux build shows before a tag is pushed.
+    # (The build job above already compiles the Linux target on Windows.)
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+      # See release.yml: bubblewrap needs unprivileged user namespaces, which Ubuntu's AppArmor restricts.
+      - name: Install flatpak-builder
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq flatpak flatpak-builder
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+      - run: scripts/package-flatpak.sh
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: pricerunnerpanel-x86_64-flatpak
+          path: |
+            artifacts/release/*.flatpak
+            artifacts/release/*.flatpak.sha256
+          if-no-files-found: error

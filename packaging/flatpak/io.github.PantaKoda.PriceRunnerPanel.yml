@@ -1,0 +1,50 @@
+# The Linux app as a Flatpak, for installing from a file (not for Flathub). It packages the already-published
+# linux-x64 folder as it is: nothing is compiled here. Build it with scripts/package-flatpak.sh, which publishes the
+# app first and fills in the version.
+id: io.github.PantaKoda.PriceRunnerPanel
+runtime: org.freedesktop.Platform
+runtime-version: '26.08'
+# Nothing is compiled, so the Platform doubles as the SDK: no 1 GB SDK download.
+sdk: org.freedesktop.Platform
+branch: stable
+command: PriceRunnerPanel
+
+finish-args:
+  - --share=network                  # PriceRunner, GitHub releases, Telegram, your mail server
+  - --share=ipc                      # X11 shared memory (MIT-SHM), needed for usable X11 drawing speed
+  # Avalonia 12 has no Wayland backend: the app draws through XWayland. --socket=fallback-x11 would withhold X11
+  # whenever a Wayland session runs (always, on Aurora), so the window would never open.
+  - --socket=x11
+  # Tray icon (KDE StatusNotifierItem). Avalonia registers it under the name org.kde.StatusNotifierItem-<pid>-<n>,
+  # and a sandbox may only own names it is given. Inside the sandbox the app is always process 2, and it has one
+  # tray icon.
+  - --talk-name=org.kde.StatusNotifierWatcher
+  - --own-name=org.kde.StatusNotifierItem-2-1
+
+build-options:
+  # .NET's native files are used as Microsoft built them: no stripping, no debug-info split.
+  strip: false
+  no-debuginfo: true
+
+modules:
+  - name: pricerunnerpanel
+    buildsystem: simple
+    sources:
+      # Paths are relative to the copy of this folder that scripts/package-flatpak.sh prepares.
+      - type: dir
+        path: app
+        dest: app
+      - type: dir
+        path: icons
+        dest: icons
+      - type: file
+        path: io.github.PantaKoda.PriceRunnerPanel.desktop
+      - type: file
+        path: io.github.PantaKoda.PriceRunnerPanel.metainfo.xml
+    build-commands:
+      - mkdir -p /app/lib /app/bin
+      - cp -a app /app/lib/PriceRunnerPanel
+      - ln -s ../lib/PriceRunnerPanel/PriceRunnerPanel /app/bin/PriceRunnerPanel
+      - install -Dm644 io.github.PantaKoda.PriceRunnerPanel.desktop -t /app/share/applications
+      - install -Dm644 io.github.PantaKoda.PriceRunnerPanel.metainfo.xml -t /app/share/metainfo
+      - for size in 64 128 256; do install -Dm644 icons/$size.png /app/share/icons/hicolor/${size}x${size}/apps/io.github.PantaKoda.PriceRunnerPanel.png; done

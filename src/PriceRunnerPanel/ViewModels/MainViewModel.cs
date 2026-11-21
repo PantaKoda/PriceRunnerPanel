@@ -4,6 +4,7 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using PriceRunnerPanel.Models;
+using PriceRunnerPanel.Platform;
 using PriceRunnerPanel.Services;
 
 namespace PriceRunnerPanel.ViewModels;
@@ -28,14 +29,14 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     private readonly PriceRunnerClient _client;
     private readonly PriceTracker _tracker;
     private readonly ImageLoader _images;
-    private readonly ToastNotifier _toasts;
+    private readonly INotifier _toasts;
     private readonly AppState _state;
     private readonly DispatcherTimer _timer;
     private CancellationTokenSource? _searchCts;
     private bool _checkingAll;
     private bool _groupsDirty;
 
-    public MainViewModel(StateStore store, PriceRunnerClient client, PriceTracker tracker, ImageLoader images, ToastNotifier toasts)
+    public MainViewModel(StateStore store, PriceRunnerClient client, PriceTracker tracker, ImageLoader images, INotifier toasts)
     {
         _store = store;
         _client = client;
@@ -167,20 +168,21 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
 
     public void ShowMessage(string message) => FooterText = message;
 
-    public bool StartWithWindows => _state.Settings.StartWithWindows;
+    /// <summary>Saved as "StartWithWindows" on every system, so existing settings keep working.</summary>
+    public bool StartAtLogin => _state.Settings.StartWithWindows;
 
-    /// <summary>Turns sign-in startup on or off. Returns the resulting state (unchanged if Windows refused).</summary>
-    public bool SetStartWithWindows(StartupRegistration startup, bool enabled)
+    /// <summary>Turns sign-in startup on or off. Returns the resulting state (unchanged if the system refused).</summary>
+    public async Task<bool> SetStartAtLoginAsync(IAutostartService startup, bool enabled)
     {
-        if (!startup.Set(enabled))
+        if (!await startup.SetAsync(enabled))
         {
-            FooterText = "Windows refused to change the startup setting";
+            FooterText = startup.RefusedMessage;
             return _state.Settings.StartWithWindows;
         }
 
         _state.Settings.StartWithWindows = enabled;
-        FooterText = enabled ? "Starts with Windows (hidden in the tray)" : "No longer starts with Windows";
-        OnPropertyChanged(nameof(StartWithWindows));
+        FooterText = enabled ? startup.EnabledMessage : startup.DisabledMessage;
+        OnPropertyChanged(nameof(StartAtLogin));
         _ = SaveAsync();
         return enabled;
     }
@@ -189,7 +191,7 @@ public sealed partial class MainViewModel : ObservableObject, IDisposable
     /// Adds the Start menu shortcut the first time, and keeps it pointing at this copy if the app moved. A shortcut
     /// the user deleted is not brought back.
     /// </summary>
-    public void SyncStartMenuShortcut(StartMenuShortcut shortcut)
+    public void SyncStartMenuShortcut(IShortcutService shortcut)
     {
         var deleted = _state.Settings.StartMenuShortcutCreated && !shortcut.Exists;
         if (deleted || shortcut.IsCurrent || !shortcut.Save())

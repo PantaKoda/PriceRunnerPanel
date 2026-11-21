@@ -20,13 +20,35 @@ Start menu shortcut.
 
 From then on the app updates itself: see [Updates](#updates).
 
+### Linux (Flatpak)
+
+Each release also has `PriceRunnerPanel-X.Y.Z-x86_64.flatpak`, for installing from the file (it isn't on Flathub).
+Open it with your software center (KDE Discover, GNOME Software), or:
+
+```
+flatpak install --user PriceRunnerPanel-X.Y.Z-x86_64.flatpak
+```
+
+It needs Flathub as a remote, which Flatpak desktops have by default: the first install fetches the
+`org.freedesktop.Platform` runtime from there. The app then appears in the application menu. To update, install the
+next release's file the same way: the watchlist and settings stay. The app tells you when a release is out, but on
+Linux it doesn't install it itself. To uninstall: `flatpak uninstall --user --delete-data io.github.PantaKoda.PriceRunnerPanel`.
+
+The Flatpak's permissions: network; X11 (Avalonia has no Wayland support yet, so the window goes through XWayland);
+and the KDE/freedesktop tray. Notifications, *Start at login* and the encrypted email/Telegram secrets go through
+the desktop's portals, which need no extra permissions. Data lives in `~/.var/app/io.github.PantaKoda.PriceRunnerPanel`.
+
 ## Build from source
 
 ```
-dotnet run --project src/PriceRunnerPanel
+dotnet run --project src/PriceRunnerPanel -f net10.0-windows10.0.19041.0   # Windows
+dotnet run --project src/PriceRunnerPanel -f net10.0                       # Linux
 ```
 
 A copy built from source works fully but never replaces itself; the update window links to GitHub instead.
+
+The releases are built by `scripts/publish-windows.ps1` (the zip) and `scripts/package-flatpak.sh` (the Flatpak; needs
+`flatpak` and `flatpak-builder`, and packages the folder that `scripts/publish-linux.sh` publishes).
 
 - **Search** — type a product name; results (picture, stores, rating, lowest price, recent drop) appear as you type.
   **PIN** starts tracking; click again to unpin. Click a name to open it on PriceRunner. Narrow a search by category,
